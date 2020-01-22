@@ -1,0 +1,6 @@
+/bin/*
+.dockerignore
+builders
+examples
+.image-builder-info
+scripts/*
