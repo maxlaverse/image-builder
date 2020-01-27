@@ -10,6 +10,7 @@ import (
 	"github.com/maxlaverse/image-builder/pkg/config"
 	"github.com/maxlaverse/image-builder/pkg/engine"
 	"github.com/maxlaverse/image-builder/pkg/fileutils"
+	"github.com/maxlaverse/image-builder/pkg/registry"
 	"github.com/maxlaverse/image-builder/pkg/template"
 	log "github.com/sirupsen/logrus"
 )
@@ -101,7 +102,7 @@ func (b *Build) pullOrBuildStage(dockerImage, stage string) (string, error) {
 	}
 
 	dockerignorePath := path.Join(buildContext, ".dockerignore")
-	err = writeDockerIgnore(dockerignorePath, dockerfile.GetDockerIgnores())
+	err = writeDockerIgnore(dockerignorePath, b.getFilesToIgnore(dockerfile))
 	if err != nil {
 		return "", err
 	}
@@ -117,7 +118,7 @@ func (b *Build) pullOrBuildStage(dockerImage, stage string) (string, error) {
 	if b.cacheImagePull && b.buildConf.HasBuilderCache() {
 		// Try to pull a pre build image
 		dockerImageWithTag = b.buildConf.BuilderCache + "/" + b.buildConf.BuilderName + ":" + stage + "-" + tag
-		if b.engine.Exists(dockerImageWithTag) {
+		if registry.ImageExists(dockerImageWithTag) {
 			log.Infof("An image for '%s' was found in the builder's cache", dockerImageWithTag)
 			return dockerImageWithTag, nil
 		}
@@ -125,8 +126,9 @@ func (b *Build) pullOrBuildStage(dockerImage, stage string) (string, error) {
 	}
 
 	// Try to pull a cached image
+	//TODO: Normalize Docker URL
 	dockerImageWithTag = dockerImage + ":" + stage + "-" + tag
-	if b.cacheImagePull && b.engine.Exists(dockerImageWithTag) {
+	if b.cacheImagePull && registry.ImageExists(dockerImageWithTag) {
 		log.Debugf("An image for '%s' was found in the application's cache", dockerImageWithTag)
 		return dockerImageWithTag, nil
 	}
@@ -154,11 +156,12 @@ func (b *Build) pullOrBuildStage(dockerImage, stage string) (string, error) {
 	return dockerImageWithTag, nil
 }
 
-func (b *Build) computeImageTag(dockerfile *template.Dockerfile, context string) (string, error) {
-	// TODO: Deduplicate the build-in list of files to always ignore
-	ignorePatterns := append(dockerfile.GetDockerIgnores(), ".dockerignore", "build.yaml")
+func (b *Build) getFilesToIgnore(dockerfile *template.Dockerfile) []string {
+	return append(dockerfile.GetDockerIgnores(), ".dockerignore", "build.yaml", ".image-builder-info")
+}
 
-	hash, err := fileutils.ContentHashing(dockerfile.GetFilteredContent(), context, ignorePatterns)
+func (b *Build) computeImageTag(dockerfile *template.Dockerfile, context string) (string, error) {
+	hash, err := fileutils.ContentHashing(dockerfile.GetFilteredContent(), context, b.getFilesToIgnore(dockerfile))
 	if err != nil {
 		log.Errorf("Error while computing content hashing")
 		return "", err
@@ -185,8 +188,6 @@ func writeDockerFile(dockerfile string) (string, error) {
 }
 
 func writeDockerIgnore(dockerfilePath string, filesToIgnore []string) error {
-	// TODO: Ignore the right build.yaml
-	filesToIgnore = append(filesToIgnore, ".dockerignore", "build.yaml")
 	dockerIgnoreContent := strings.Join(filesToIgnore, "\n") + "\n"
 	return ioutil.WriteFile(dockerfilePath, []byte(dockerIgnoreContent), 0644)
 }

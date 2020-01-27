@@ -49,14 +49,3 @@ func (cli *podmanCli) Pull(image string) error {
 	}
 	return nil
 }
-
-func (cli *podmanCli) Exists(image string) bool {
-	cmd := exec.Command("podman", "pull", image)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	err := cmd.Run()
-	if err != nil {
-		return false
-	}
-	return true
-}

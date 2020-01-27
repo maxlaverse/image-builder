@@ -6,7 +6,6 @@ type BuildEngine interface {
 	Build(dockerfile, image, context string) error
 	Push(image string) error
 	Pull(image string) error
-	Exists(image string) bool
 }
 
 func New(name string) (BuildEngine, error) {
