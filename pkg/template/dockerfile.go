@@ -6,19 +6,20 @@ const (
 	dirFriendlyTag       = "FriendlyTag"
 	dirContentHashIgnore = "ContentHashIgnore"
 	dirDockerIgnore      = "DockerIgnore"
-	dirRequireStage      = "RequireStage"
 	dirUseBuilderContext = "UseBuilderContext"
 )
 
 type Dockerfile struct {
 	content []byte
 	data    map[string][]string
+	deps    []string
 }
 
-func DockerfileFromContent(content []byte) Dockerfile {
+func DockerfileFromContent(content []byte, deps []string) Dockerfile {
 	d := Dockerfile{
 		content: content,
 		data:    map[string][]string{},
+		deps:    deps,
 	}
 	d.parseDirectives()
 	return d
@@ -84,8 +85,5 @@ func (d *Dockerfile) GetFriendlyTag() string {
 }
 
 func (d *Dockerfile) GetRequiredStages() []string {
-	if d.data[dirRequireStage] != nil {
-		return d.data[dirRequireStage]
-	}
-	return []string{}
+	return d.deps
 }

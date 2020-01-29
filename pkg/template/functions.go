@@ -10,13 +10,23 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func Image(i map[string]string, arg ...string) tttt {
-	return func(arg ...string) interface{} {
-		return i[arg[0]]
+type TemplateContext struct {
+	data TemplateData
+}
+
+func NewTemplateContext(data TemplateData) TemplateContext {
+	return TemplateContext{
+		data: data,
 	}
 }
 
-func ExternalImage(args ...string) string {
+func (t *TemplateContext) BuilderStage(arg ...string) string {
+	t.data.dependencies[arg[0]] = struct{}{}
+	return t.data.Images[arg[0]]
+}
+
+func (t *TemplateContext) ExternalImage(args ...string) string {
+	//TODO: Replace with registry lookup
 	out := bytes.Buffer{}
 	cmd := exec.Command("docker", append([]string{"inspect", "--format='{{index .RepoDigests 0}}'"}, args...)...)
 	cmd.Stdout = &out
@@ -30,16 +40,17 @@ func ExternalImage(args ...string) string {
 }
 
 // TODO: Take context into account
-func HasFile(sourcePath string) bool {
+func (t *TemplateContext) HasFile(sourcePath string) bool {
 	_, err := os.Stat(sourcePath)
 	return err == nil
 }
 
-func Concat(args ...string) string {
+func (t *TemplateContext) Concat(args ...string) string {
 	return strings.Join(args, "")
 }
 
-func GitCommitShort() string {
+// TODO: Use an externally provided executor
+func (t *TemplateContext) GitCommitShort() string {
 	out := bytes.Buffer{}
 	cmd := exec.Command("git", "rev-parse", "HEAD")
 	cmd.Stdout = &out
@@ -51,40 +62,32 @@ func GitCommitShort() string {
 	return strings.Replace(out.String(), "\n", "", -1)
 }
 
-type tttt func(arg ...string) interface{}
-
-func MandatoryParameter(i map[string]interface{}, arg ...string) tttt {
-	return func(arg ...string) interface{} {
-		if len(arg[0]) > 0 && i[arg[0]] != nil {
-			return i[arg[0]]
-		} else {
-			return arg[1]
-		}
+func (t *TemplateContext) MandatoryParameter(args ...string) interface{} {
+	if len(args[0]) > 0 && t.data.Build.Spec[args[0]] != nil {
+		return t.data.Build.Spec[args[0]]
+	} else {
+		return args[1]
 	}
 }
 
-func ParamOrDefault(i map[string]interface{}, arg ...string) tttt {
-	return func(arg ...string) interface{} {
-		if len(arg[0]) > 0 && i[arg[0]] != nil {
-			return i[arg[0]]
-		} else if len(arg) > 1 {
-			return arg[1]
-		}
-		return ""
+func (t *TemplateContext) ParamOrDefault(args ...string) interface{} {
+	if len(args[0]) > 0 && t.data.Build.Spec[args[0]] != nil {
+		return t.data.Build.Spec[args[0]]
+	} else if len(args) > 1 {
+		return args[1]
+	}
+	return ""
+}
+
+func (t *TemplateContext) ParamOrFile(args ...string) interface{} {
+	if len(args[0]) > 0 && t.data.Build.Spec[args[0]] != nil {
+		return t.data.Build.Spec[args[0]]
+	} else {
+		return strings.Replace(t.readFile(args[1]), "\n", "", -1)
 	}
 }
 
-func ParamOrFile(i map[string]interface{}, arg ...string) tttt {
-	return func(arg ...string) interface{} {
-		if len(arg[0]) > 0 && i[arg[0]] != nil {
-			return i[arg[0]]
-		} else {
-			return strings.Replace(ReadFile(arg[1]), "\n", "", -1)
-		}
-	}
-}
-
-func ReadFile(sourcePath string) string {
+func (t *TemplateContext) readFile(sourcePath string) string {
 	data, err := ioutil.ReadFile(sourcePath)
 	if err != nil {
 		panic(err)

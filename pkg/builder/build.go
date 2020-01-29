@@ -48,8 +48,8 @@ func (b *Build) GetStageBuildOrder(finalStage string) ([]string, error) {
 	stageGraph := NewGraph()
 	for _, stage := range b.buildDef.GetStages() {
 		builderPath := b.buildDef.GetStagePath(stage)
-		tmplContext := template.NewMinimalTemplateContext(b.buildConf)
-		dockerfile, err := template.RenderDockerfile(path.Join(builderPath, "Dockerfile"), tmplContext)
+		data := template.NewMinimalTemplateData(b.buildConf)
+		dockerfile, err := template.RenderDockerfile(path.Join(builderPath, "Dockerfile"), data)
 		if err != nil {
 			log.Errorf("Could not render the Dockerfile: %v", err)
 			return nil, err
@@ -78,8 +78,8 @@ func (b *Build) BuildStage(stage string) error {
 // pullOrBuildStage lookup the builder cache for an already existing image for the given content and build it otherwise
 func (b *Build) pullOrBuildStage(dockerImage, stage string) (string, error) {
 	builderPath := b.buildDef.GetStagePath(stage)
-	tmplContext := template.NewTemplateContext(b.buildConf, b.images)
-	dockerfile, err := template.RenderDockerfile(path.Join(builderPath, "Dockerfile"), tmplContext)
+	data := template.NewTemplateData(b.buildConf, b.images)
+	dockerfile, err := template.RenderDockerfile(path.Join(builderPath, "Dockerfile"), data)
 	if err != nil {
 		return "", err
 	}
