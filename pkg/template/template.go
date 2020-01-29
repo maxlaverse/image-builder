@@ -17,21 +17,24 @@ var (
 type TemplateData struct {
 	Build        config.BuildConfiguration
 	Images       map[string]string
+	localContext string
 	dependencies map[string]struct{}
 }
 
-func NewMinimalTemplateData(buildConf config.BuildConfiguration) TemplateData {
+func NewMinimalTemplateData(buildConf config.BuildConfiguration, localContext string) TemplateData {
 	return TemplateData{
 		Build:        buildConf,
 		Images:       map[string]string{},
+		localContext: localContext,
 		dependencies: map[string]struct{}{},
 	}
 }
 
-func NewTemplateData(buildConf config.BuildConfiguration, image map[string]string) TemplateData {
+func NewTemplateData(buildConf config.BuildConfiguration, image map[string]string, localContext string) TemplateData {
 	return TemplateData{
 		Build:        buildConf,
 		Images:       image,
+		localContext: localContext,
 		dependencies: map[string]struct{}{},
 	}
 }

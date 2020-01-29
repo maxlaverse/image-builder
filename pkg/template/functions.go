@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
@@ -39,9 +40,8 @@ func (t *TemplateContext) ExternalImage(args ...string) string {
 	return strings.Replace(out.String(), "\n", "", -1)
 }
 
-// TODO: Take context into account
 func (t *TemplateContext) HasFile(sourcePath string) bool {
-	_, err := os.Stat(sourcePath)
+	_, err := os.Stat(path.Join(t.data.localContext, sourcePath))
 	return err == nil
 }
 
@@ -88,7 +88,7 @@ func (t *TemplateContext) ParamOrFile(args ...string) interface{} {
 }
 
 func (t *TemplateContext) readFile(sourcePath string) string {
-	data, err := ioutil.ReadFile(sourcePath)
+	data, err := ioutil.ReadFile(path.Join(t.data.localContext, sourcePath))
 	if err != nil {
 		panic(err)
 	}
