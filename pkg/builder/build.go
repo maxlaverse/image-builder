@@ -118,7 +118,13 @@ func (b *Build) pullOrBuildStage(dockerImage, stage string) (string, error) {
 	if b.cacheImagePull && b.buildConf.HasBuilderCache() {
 		// Try to pull a pre build image
 		dockerImageWithTag = b.buildConf.BuilderCache + "/" + b.buildConf.BuilderName + ":" + stage + "-" + tag
-		if registry.ImageExists(dockerImageWithTag) {
+		exists, err := registry.ImageExists(dockerImageWithTag)
+		if err != nil {
+			log.Errorf("Error while computing the tag for the image: %v", err)
+			return "", err
+		}
+
+		if exists {
 			log.Infof("An image for '%s' was found in the builder's cache", dockerImageWithTag)
 			return dockerImageWithTag, nil
 		}
@@ -128,9 +134,16 @@ func (b *Build) pullOrBuildStage(dockerImage, stage string) (string, error) {
 	// Try to pull a cached image
 	//TODO: Normalize Docker URL
 	dockerImageWithTag = dockerImage + ":" + stage + "-" + tag
-	if b.cacheImagePull && registry.ImageExists(dockerImageWithTag) {
-		log.Debugf("An image for '%s' was found in the application's cache", dockerImageWithTag)
-		return dockerImageWithTag, nil
+	if b.cacheImagePull {
+		exists, err := registry.ImageExists(dockerImageWithTag)
+		if err != nil {
+			log.Errorf("Error while computing the tag for the image: %v", err)
+			return "", err
+		}
+		if exists {
+			log.Debugf("An image for '%s' was found in the application's cache", dockerImageWithTag)
+			return dockerImageWithTag, nil
+		}
 	}
 
 	if b.dryRun {

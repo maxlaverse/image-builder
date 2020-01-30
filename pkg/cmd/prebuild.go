@@ -50,7 +50,7 @@ func buildStageBase(opts buildCommandOptions) error {
 			BuilderSource: source,
 			BuilderCache:  prebuildConf.BuilderCache,
 			BuilderName:   conf.BuilderName,
-			Spec:          conf.Spec,
+			ImageSpec:     conf.Spec,
 		}
 
 		if len(conf.BuilderName) == 0 {

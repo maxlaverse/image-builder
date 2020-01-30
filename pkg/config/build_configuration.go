@@ -9,10 +9,10 @@ import (
 
 // BuildConfiguration represents the build configuration of an application
 type BuildConfiguration struct {
-	BuilderCache  string `yaml:"builderCache"`
-	BuilderName   string `yaml:"builderName"`
-	BuilderSource string `yaml:"builderSource"`
-	Spec          map[string]interface{}
+	BuilderCache  string                 `yaml:"builderCache"`
+	BuilderName   string                 `yaml:"builderName"`
+	BuilderSource string                 `yaml:"builderSource"`
+	ImageSpec     map[string]interface{} `yaml:"imageSpec"`
 }
 
 // ReadBuildConfiguration unserialize the build configuration

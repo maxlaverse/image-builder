@@ -1,50 +1,33 @@
 package registry
 
 import (
-	"net/url"
-	"strings"
+	"fmt"
 
-	"github.com/heroku/docker-registry-client/registry"
-	log "github.com/sirupsen/logrus"
+	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/google/go-containerregistry/pkg/v1/remote"
 )
 
-func ImageExists(imagename string) bool {
-	if !isRemoteImage(imagename) {
-		return false
-	}
-	log.Infof("Checking existence of '%s'", imagename)
-	u, err := url.Parse("https://" + imagename)
+func ImageWithDigest(ref string) (string, error) {
+	desc, err := getManifest(ref)
 	if err != nil {
-		log.Errorf("Registry error: %v", err)
-		return false
-	}
-	part := strings.Split(u.EscapedPath(), ":")
-	url := "https://" + u.Hostname()
-	username := "" // anonymous
-	password := "" // anonymous
-	hub, err := registry.New(url, username, password)
-	if err != nil {
-		log.Errorf("Registry error: %v", err)
-		return false
+		return "", err
 	}
 
-	hub.Logf = func(format string, args ...interface{}) {
-		log.Debugf(format, args)
-	}
-
-	tags, err := hub.Tags(strings.TrimPrefix(part[0], "/"))
-	if err != nil {
-		log.Errorf("Registry error: %v", err)
-		return false
-	}
-	for _, t := range tags {
-		if t == part[1] {
-			return true
-		}
-	}
-	return false
+	return fmt.Sprintf("%s@%s", desc.Ref.Context(), desc.Digest.String()), nil
 }
 
-func isRemoteImage(imagename string) bool {
-	return strings.Count(imagename, "/") != 0
+func ImageExists(ref string) (bool, error) {
+	_, err := getManifest(ref)
+	if err != nil {
+		return false, nil
+	}
+	return true, nil
+}
+
+func getManifest(r string) (*remote.Descriptor, error) {
+	ref, err := name.ParseReference(r)
+	if err != nil {
+		return nil, fmt.Errorf("parsing reference %q: %v", r, err)
+	}
+	return remote.Get(ref)
 }

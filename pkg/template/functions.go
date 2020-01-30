@@ -8,6 +8,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/maxlaverse/image-builder/pkg/registry"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -27,17 +28,13 @@ func (t *TemplateContext) BuilderStage(arg ...string) string {
 }
 
 func (t *TemplateContext) ExternalImage(args ...string) string {
-	//TODO: Replace with registry lookup
-	out := bytes.Buffer{}
-	cmd := exec.Command("docker", append([]string{"inspect", "--format='{{index .RepoDigests 0}}'"}, args...)...)
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-	err := cmd.Run()
+	digest, err := registry.ImageWithDigest(args[0])
 	if err != nil {
-		log.Fatal(out.String())
+		log.Fatal(err)
 	}
-	log.Debugf("Replaced external image '%s' with '%s'", args[0], strings.Replace(out.String(), "\n", "", -1))
-	return strings.Replace(out.String(), "\n", "", -1)
+
+	log.Debugf("Replaced external image '%s' with '%s'", args[0], digest)
+	return digest
 }
 
 func (t *TemplateContext) HasFile(sourcePath string) bool {
@@ -63,16 +60,16 @@ func (t *TemplateContext) GitCommitShort() string {
 }
 
 func (t *TemplateContext) MandatoryParameter(args ...string) interface{} {
-	if len(args[0]) > 0 && t.data.Build.Spec[args[0]] != nil {
-		return t.data.Build.Spec[args[0]]
+	if len(args[0]) > 0 && t.data.Build.ImageSpec[args[0]] != nil {
+		return t.data.Build.ImageSpec[args[0]]
 	} else {
 		return args[1]
 	}
 }
 
 func (t *TemplateContext) ParamOrDefault(args ...string) interface{} {
-	if len(args[0]) > 0 && t.data.Build.Spec[args[0]] != nil {
-		return t.data.Build.Spec[args[0]]
+	if len(args[0]) > 0 && t.data.Build.ImageSpec[args[0]] != nil {
+		return t.data.Build.ImageSpec[args[0]]
 	} else if len(args) > 1 {
 		return args[1]
 	}
@@ -80,8 +77,8 @@ func (t *TemplateContext) ParamOrDefault(args ...string) interface{} {
 }
 
 func (t *TemplateContext) ParamOrFile(args ...string) interface{} {
-	if len(args[0]) > 0 && t.data.Build.Spec[args[0]] != nil {
-		return t.data.Build.Spec[args[0]]
+	if len(args[0]) > 0 && t.data.Build.ImageSpec[args[0]] != nil {
+		return t.data.Build.ImageSpec[args[0]]
 	} else {
 		return strings.Replace(t.readFile(args[1]), "\n", "", -1)
 	}
