@@ -2,6 +2,7 @@ package executor
 
 import (
 	"io"
+	"os"
 	"os/exec"
 
 	log "github.com/sirupsen/logrus"
@@ -31,6 +32,7 @@ type command struct {
 type Command interface {
 	WithDir(dir string) Command
 	WithCombinedOutput(out io.Writer) Command
+	WithConsoleOutput() Command
 	Run() error
 }
 
@@ -42,6 +44,12 @@ func (c *command) WithDir(dir string) Command {
 func (c *command) WithCombinedOutput(out io.Writer) Command {
 	c.cmd.Stdout = out
 	c.cmd.Stderr = out
+	return c
+}
+
+func (c *command) WithConsoleOutput() Command {
+	c.cmd.Stdout = os.Stdout
+	c.cmd.Stderr = os.Stderr
 	return c
 }
 

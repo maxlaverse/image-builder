@@ -11,6 +11,7 @@ import (
 	"github.com/maxlaverse/image-builder/pkg/builder"
 	"github.com/maxlaverse/image-builder/pkg/config"
 	"github.com/maxlaverse/image-builder/pkg/engine"
+	"github.com/maxlaverse/image-builder/pkg/executor"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -84,12 +85,12 @@ func buildStageGeneric(opts buildCommandOptions, finalStage string, buildConf co
 		return err
 	}
 
-	engineCli, err := engine.New(opts.engine)
+	engineCli, err := engine.New(opts.engine, executor.New())
 	if err != nil {
 		return err
 	}
 
-	b := builder.NewBuild(engineCli, buildConf, builderDef, opts.dryRun, opts.cacheImagePull, opts.cacheImagePush, opts.targetImage, buildContext)
+	b := builder.NewBuild(engineCli, executor.New(), buildConf, builderDef, opts.dryRun, opts.cacheImagePull, opts.cacheImagePush, opts.targetImage, buildContext)
 	orderedStages, err := b.GetStageBuildOrder(finalStage)
 	if err != nil {
 		return err

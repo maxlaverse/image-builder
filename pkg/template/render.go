@@ -10,14 +10,14 @@ import (
 )
 
 // RenderDockerfile renders a given Dockerfile based on provided BuildData
-func RenderDockerfile(sourcePath string, data BuildData) (Dockerfile, error) {
+func RenderDockerfile(sourcePath string, data BuildData, exec executor.Executor) (Dockerfile, error) {
 	content, err := ioutil.ReadFile(sourcePath)
 	if err != nil {
 		log.Errorf("Failed to read the Dockerfile template: %v", err)
 		return nil, err
 	}
 
-	templateData := newTemplateData(data, executor.New())
+	templateData := newTemplateData(data, exec)
 	tmpl, err := template.New("dockerfile").Funcs(templateData.FuncMaps()).Parse(string(content))
 	if err != nil {
 		log.Errorf("Fatal to parse the Dockerfile template: %v, %s", err, string(content))

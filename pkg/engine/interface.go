@@ -1,18 +1,24 @@
 package engine
 
-import "fmt"
+import (
+	"fmt"
 
+	"github.com/maxlaverse/image-builder/pkg/executor"
+)
+
+// BuildEngine abstract container builder
 type BuildEngine interface {
 	Build(dockerfile, image, context string) error
 	Push(image string) error
 	Pull(image string) error
 }
 
-func New(name string) (BuildEngine, error) {
+// New returns a new container builder engine
+func New(name string, exec executor.Executor) (BuildEngine, error) {
 	if name == "podman" {
-		return NewPodmanCli(), nil
+		return newPodmanCli(exec), nil
 	} else if name == "docker" {
-		return NewDockerCli(), nil
+		return newDockerCli(exec), nil
 	} else {
 		return nil, fmt.Errorf("Unsupport engine")
 	}

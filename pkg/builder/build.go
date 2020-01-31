@@ -9,6 +9,7 @@ import (
 
 	"github.com/maxlaverse/image-builder/pkg/config"
 	"github.com/maxlaverse/image-builder/pkg/engine"
+	"github.com/maxlaverse/image-builder/pkg/executor"
 	"github.com/maxlaverse/image-builder/pkg/fileutils"
 	"github.com/maxlaverse/image-builder/pkg/registry"
 	"github.com/maxlaverse/image-builder/pkg/template"
@@ -19,6 +20,7 @@ import (
 type Build struct {
 	engine         engine.BuildEngine
 	buildDef       *config.BuilderDef
+	exec           executor.Executor
 	images         map[string]string
 	dryRun         bool
 	localContext   string
@@ -29,7 +31,7 @@ type Build struct {
 }
 
 // NewBuild returns a new instance of Build
-func NewBuild(e engine.BuildEngine, buildConf config.BuildConfiguration, r *config.BuilderDef, dryRun, cacheImagePull, cacheImagePush bool, targetImage string, localContext string) *Build {
+func NewBuild(e engine.BuildEngine, exec executor.Executor, buildConf config.BuildConfiguration, r *config.BuilderDef, dryRun, cacheImagePull, cacheImagePush bool, targetImage string, localContext string) *Build {
 	return &Build{
 		engine:         e,
 		buildDef:       r,
@@ -40,6 +42,7 @@ func NewBuild(e engine.BuildEngine, buildConf config.BuildConfiguration, r *conf
 		cacheImagePull: cacheImagePull,
 		targetImage:    targetImage,
 		buildConf:      buildConf,
+		exec:           exec,
 	}
 }
 
@@ -49,7 +52,7 @@ func (b *Build) GetStageBuildOrder(finalStage string) ([]string, error) {
 	for _, stage := range b.buildDef.GetStages() {
 		builderPath := b.buildDef.GetStagePath(stage)
 		data := template.NewMinimalBuildData(b.buildConf, b.localContext)
-		dockerfile, err := template.RenderDockerfile(path.Join(builderPath, "Dockerfile"), data)
+		dockerfile, err := template.RenderDockerfile(path.Join(builderPath, "Dockerfile"), data, b.exec)
 		if err != nil {
 			log.Errorf("Could not render the Dockerfile: %v", err)
 			return nil, err
@@ -79,7 +82,7 @@ func (b *Build) BuildStage(stage string) error {
 func (b *Build) pullOrBuildStage(dockerImage, stage string) (string, error) {
 	builderPath := b.buildDef.GetStagePath(stage)
 	data := template.NewBuildData(b.buildConf, b.localContext, b.images)
-	dockerfile, err := template.RenderDockerfile(path.Join(builderPath, "Dockerfile"), data)
+	dockerfile, err := template.RenderDockerfile(path.Join(builderPath, "Dockerfile"), data, b.exec)
 	if err != nil {
 		return "", err
 	}

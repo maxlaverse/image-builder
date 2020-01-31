@@ -2,31 +2,29 @@ package engine
 
 import (
 	"bytes"
-	"os"
-	"os/exec"
-	"strings"
 
+	"github.com/maxlaverse/image-builder/pkg/executor"
 	log "github.com/sirupsen/logrus"
 )
 
-type dockerCli struct{}
+type dockerCli struct {
+	exec executor.Executor
+}
 
-func NewDockerCli() BuildEngine {
-	return &dockerCli{}
+// newDockerCli returns a new engine based on Docker
+func newDockerCli(exec executor.Executor) BuildEngine {
+	return &dockerCli{exec: exec}
 }
 
 func (cli *dockerCli) cmd(args ...string) error {
-	cmd := exec.Command("docker", args...)
+	cmd := cli.exec.NewCommand("docker", args...)
 	var out bytes.Buffer
 
 	if log.GetLevel() >= log.InfoLevel {
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
+		cmd = cmd.WithConsoleOutput()
 	} else {
-		cmd.Stdout = &out
-		cmd.Stderr = &out
+		cmd = cmd.WithCombinedOutput(&out)
 	}
-	log.Debugf("Executing docker %v", strings.Join(args, " "))
 	err := cmd.Run()
 	if err != nil {
 		log.Errorf("Command returned: %s", out.String())
