@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"math"
 
 	"github.com/maxlaverse/image-builder/pkg/cmd"
 	log "github.com/sirupsen/logrus"
@@ -16,7 +17,7 @@ func main() {
 		Long:             "Build container images for many different application types",
 		TraverseChildren: true,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
-			log.SetLevel(log.Level(verbose + 4))
+			log.SetLevel(log.Level(math.Min(float64(verbose + 4),6.0)))
 			log.SetFormatter(&log.TextFormatter{})
 		},
 	}
