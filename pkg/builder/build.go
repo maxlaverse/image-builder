@@ -118,7 +118,7 @@ func (b *Build) pullOrBuildStage(dockerImage, stage string) (string, error) {
 	}
 
 	var dockerImageWithTag string
-	if b.cacheImagePull && b.buildConf.HasBuilderCache() {
+	if b.cacheImagePull && b.buildConf.IsBuilderCacheSet() {
 		// Try to pull a pre build image
 		dockerImageWithTag = b.buildConf.BuilderCache + "/" + b.buildConf.BuilderName + ":" + stage + "-" + tag
 		exists, err := registry.ImageExists(dockerImageWithTag)

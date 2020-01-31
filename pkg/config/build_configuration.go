@@ -32,8 +32,8 @@ func ReadBuildConfiguration(filepath string) (BuildConfiguration, error) {
 	return conf, nil
 }
 
-// HasBuilderCache returns wether a buildercache is specified
-func (c *BuildConfiguration) HasBuilderCache() bool {
+// IsBuilderCacheSet returns wether a buildercache is specified
+func (c *BuildConfiguration) IsBuilderCacheSet() bool {
 	return true
 }
 
