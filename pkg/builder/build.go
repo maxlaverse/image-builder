@@ -48,7 +48,7 @@ func (b *Build) GetStageBuildOrder(finalStage string) ([]string, error) {
 	stageGraph := NewGraph()
 	for _, stage := range b.buildDef.GetStages() {
 		builderPath := b.buildDef.GetStagePath(stage)
-		data := template.NewMinimalTemplateData(b.buildConf, b.localContext)
+		data := template.NewMinimalBuildData(b.buildConf, b.localContext)
 		dockerfile, err := template.RenderDockerfile(path.Join(builderPath, "Dockerfile"), data)
 		if err != nil {
 			log.Errorf("Could not render the Dockerfile: %v", err)
@@ -78,7 +78,7 @@ func (b *Build) BuildStage(stage string) error {
 // pullOrBuildStage lookup the builder cache for an already existing image for the given content and build it otherwise
 func (b *Build) pullOrBuildStage(dockerImage, stage string) (string, error) {
 	builderPath := b.buildDef.GetStagePath(stage)
-	data := template.NewTemplateData(b.buildConf, b.images, b.localContext)
+	data := template.NewBuildData(b.buildConf, b.localContext, b.images)
 	dockerfile, err := template.RenderDockerfile(path.Join(builderPath, "Dockerfile"), data)
 	if err != nil {
 		return "", err
@@ -169,12 +169,12 @@ func (b *Build) pullOrBuildStage(dockerImage, stage string) (string, error) {
 	return dockerImageWithTag, nil
 }
 
-func (b *Build) getFilesToIgnore(dockerfile *template.Dockerfile) []string {
+func (b *Build) getFilesToIgnore(dockerfile template.Dockerfile) []string {
 	return append(dockerfile.GetDockerIgnores(), ".dockerignore", "build.yaml", ".image-builder-info")
 }
 
-func (b *Build) computeImageTag(dockerfile *template.Dockerfile, context string) (string, error) {
-	hash, err := fileutils.ContentHashing(dockerfile.GetFilteredContent(), context, b.getFilesToIgnore(dockerfile))
+func (b *Build) computeImageTag(dockerfile template.Dockerfile, context string) (string, error) {
+	hash, err := fileutils.ContentHashing(dockerfile.GetContentWithoutIgnoredLines(), context, b.getFilesToIgnore(dockerfile))
 	if err != nil {
 		log.Errorf("Error while computing content hashing")
 		return "", err

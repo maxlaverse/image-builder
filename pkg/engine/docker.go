@@ -18,6 +18,7 @@ func NewDockerCli() BuildEngine {
 func (cli *dockerCli) cmd(args ...string) error {
 	cmd := exec.Command("docker", args...)
 	var out bytes.Buffer
+
 	if log.GetLevel() >= log.InfoLevel {
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
@@ -25,10 +26,10 @@ func (cli *dockerCli) cmd(args ...string) error {
 		cmd.Stdout = &out
 		cmd.Stderr = &out
 	}
-	err := cmd.Run()
 	log.Debugf("Executing docker %v", strings.Join(args, " "))
+	err := cmd.Run()
 	if err != nil {
-		log.Errorf(out.String())
+		log.Errorf("Command returned: %s", out.String())
 	}
 	return err
 }

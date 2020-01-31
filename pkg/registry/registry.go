@@ -3,6 +3,7 @@ package registry
 import (
 	"fmt"
 
+	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 )
@@ -29,5 +30,5 @@ func getManifest(r string) (*remote.Descriptor, error) {
 	if err != nil {
 		return nil, fmt.Errorf("parsing reference %q: %v", r, err)
 	}
-	return remote.Get(ref)
+	return remote.Get(ref, remote.WithAuthFromKeychain(authn.DefaultKeychain))
 }

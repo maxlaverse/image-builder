@@ -1,89 +1,114 @@
 package template
 
-import "strings"
+import (
+	"regexp"
+	"strings"
+)
 
 const (
-	dirFriendlyTag       = "FriendlyTag"
-	dirContentHashIgnore = "ContentHashIgnore"
-	dirDockerIgnore      = "DockerIgnore"
+	// dirFriendlyTag allows to specify a suffix for the generated tag
+	dirFriendlyTag = "FriendlyTag"
+
+	// dirContentHashIgnoreNextLine tells the content ahsing algorithm to ignore the
+	// next line
+	dirContentHashIgnoreNextLine = "ContentHashIgnoreNextLie"
+
+	// dirDockerIgnore automatically excludes files from the Docker context
+	dirDockerIgnore = "DockerIgnore"
+
+	// dirUseBuilderContext changes the build context for the directory where the builder
+	// is defined
 	dirUseBuilderContext = "UseBuilderContext"
 )
 
-type Dockerfile struct {
-	content []byte
+var (
+	// regExpDirectives is the regular expression to parse those directives
+	regExpDirectives = regexp.MustCompile(`# ([a-zA-Z]+)(?: (.*))?`)
+)
+
+type dockerfile struct {
+	content string
 	data    map[string][]string
 	deps    []string
 }
 
+// Dockerfile is the interface for a parsed Dockerfile
+type Dockerfile interface {
+	GetContent() string
+	GetContentWithoutIgnoredLines() string
+	GetDockerIgnores() []string
+	GetFriendlyTag() string
+	GetRequiredStages() []string
+	UseBuilderContext() bool
+}
+
+// DockerfileFromContent returns a new parsed Dockerfile
 func DockerfileFromContent(content []byte, deps []string) Dockerfile {
-	d := Dockerfile{
-		content: content,
-		data:    map[string][]string{},
+	return &dockerfile{
+		content: string(content),
+		data:    parseDirectives(content),
 		deps:    deps,
 	}
-	d.parseDirectives()
-	return d
 }
 
-func (d *Dockerfile) parseDirectives() {
-	res := regExpDirectives.FindAllSubmatch(d.content, -1)
-	for _, line := range res {
-		name := string(line[1])
-		if _, ok := d.data[name]; !ok {
-			d.data[name] = []string{}
-		}
-		d.data[name] = append(d.data[name], string(line[2]))
-	}
+// Returns the rendered content of the Dockerfile
+func (d *dockerfile) GetContent() string {
+	return d.content
 }
 
-func (d *Dockerfile) GetContent() string {
-	return string(d.content)
-}
-
-func (d *Dockerfile) GetFilteredContent() string {
-	lines := []string{}
-	curLines := strings.Split(string(d.content), "\n")
+// Returns the friendly rendered content
+func (d *dockerfile) GetContentWithoutIgnoredLines() string {
+	filteredLines := []string{}
+	lines := strings.Split(d.content, "\n")
 	skip := false
-	for _, v := range curLines {
-		if strings.Contains(v, "# ContentHashIgnore") {
-			skip = true
-			continue
-		}
+	for _, line := range lines {
 		if skip {
 			skip = false
-			continue
+			line = "# THIS LINE HAS BEEN AUTOMATICALLY REMOVED"
+		} else if strings.HasPrefix(line, "# "+dirContentHashIgnoreNextLine) {
+			skip = true
 		}
-		lines = append(lines, v)
+		filteredLines = append(filteredLines, line)
 	}
-	return strings.Join(lines, "\n")
+	return strings.Join(filteredLines, "\n")
 }
 
-func (d *Dockerfile) UseBuilderContext() bool {
+// GetDockerIgnores returns the list of files to ignore when loading the build context
+func (d *dockerfile) GetDockerIgnores() []string {
+	if d.data[dirDockerIgnore] == nil {
+		return []string{}
+	}
+	return d.data[dirDockerIgnore]
+}
+
+// GetFriendlyTag returns the friendly tag
+func (d *dockerfile) GetFriendlyTag() string {
+	if d.data[dirFriendlyTag] == nil {
+		return ""
+	}
+	return d.data[dirFriendlyTag][0]
+}
+
+// GetRequiredStages returns the dependency of the Dockerfile
+func (d *dockerfile) GetRequiredStages() []string {
+	return d.deps
+}
+
+// UseBuilderContext returns if the Dockerfile specified the builder context should be used
+func (d *dockerfile) UseBuilderContext() bool {
 	_, ok := d.data[dirUseBuilderContext]
 	return ok
 }
 
-func (d *Dockerfile) GetContentHashIgnores() []string {
-	if d.data[dirContentHashIgnore] != nil {
-		return d.data[dirContentHashIgnore]
+func parseDirectives(content []byte) map[string][]string {
+	data := map[string][]string{}
+	res := regExpDirectives.FindAllSubmatch(content, -1)
+	for _, line := range res {
+		name := string(line[1])
+		if _, ok := data[name]; !ok {
+			data[name] = []string{}
+		}
+		data[name] = append(data[name], string(line[2]))
 	}
-	return []string{}
-}
-
-func (d *Dockerfile) GetDockerIgnores() []string {
-	if d.data[dirDockerIgnore] != nil {
-		return d.data[dirDockerIgnore]
-	}
-	return []string{}
-}
-
-func (d *Dockerfile) GetFriendlyTag() string {
-	if d.data[dirFriendlyTag] != nil {
-		return d.data[dirFriendlyTag][0]
-	}
-	return ""
-}
-
-func (d *Dockerfile) GetRequiredStages() []string {
-	return d.deps
+	return data
 }
