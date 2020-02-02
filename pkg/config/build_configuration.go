@@ -9,10 +9,11 @@ import (
 
 // BuildConfiguration represents the build configuration of an application
 type BuildConfiguration struct {
-	BuilderCache  string                 `yaml:"builderCache"`
-	BuilderName   string                 `yaml:"builderName"`
-	BuilderSource string                 `yaml:"builderSource"`
-	ImageSpec     map[string]interface{} `yaml:"imageSpec"`
+	BuilderCache  string                            `yaml:"builderCache"`
+	BuilderName   string                            `yaml:"builderName"`
+	BuilderSource string                            `yaml:"builderSource"`
+	ImageSpec     map[string]interface{}            `yaml:"imageSpec"`
+	StageSpec     map[string]map[string]interface{} `yaml:"stageSpec"`
 }
 
 // ReadBuildConfiguration unserialize the build configuration
@@ -35,6 +36,24 @@ func ReadBuildConfiguration(filepath string) (BuildConfiguration, error) {
 // IsBuilderCacheSet returns wether a buildercache is specified
 func (c *BuildConfiguration) IsBuilderCacheSet() bool {
 	return true
+}
+
+// DockerignoreForStage returns the Dockerfiles to ignore
+func (c *BuildConfiguration) DockerignoreForStage(stageName string) []string {
+	result := []string{}
+	if v, ok := c.ImageSpec["dockerIgnores"]; ok {
+		for _, v3 := range v.([]interface{}) {
+			result = append(result, v3.(string))
+		}
+	}
+	if v, ok := c.StageSpec[stageName]; ok {
+		if v2, ok := v["dockerIgnores"]; ok {
+			for _, v3 := range v2.([]interface{}) {
+				result = append(result, v3.(string))
+			}
+		}
+	}
+	return result
 }
 
 func (c *BuildConfiguration) normalize() {

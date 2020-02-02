@@ -105,13 +105,13 @@ func (b *Build) pullOrBuildStage(dockerImage, stage string) (string, error) {
 	}
 
 	dockerignorePath := path.Join(buildContext, ".dockerignore")
-	err = writeDockerIgnore(dockerignorePath, b.getFilesToIgnore(dockerfile))
+	err = writeDockerIgnore(dockerignorePath, b.getFilesToIgnore(dockerfile, stage))
 	if err != nil {
 		return "", err
 	}
 	defer os.Remove(dockerignorePath)
 
-	tag, err := b.computeImageTag(dockerfile, buildContext)
+	tag, err := b.computeImageTag(dockerfile, buildContext, stage)
 	if err != nil {
 		log.Errorf("Error while computing the tag for the image: %v", err)
 		return "", err
@@ -172,12 +172,14 @@ func (b *Build) pullOrBuildStage(dockerImage, stage string) (string, error) {
 	return dockerImageWithTag, nil
 }
 
-func (b *Build) getFilesToIgnore(dockerfile template.Dockerfile) []string {
-	return append(dockerfile.GetDockerIgnores(), ".dockerignore", "build.yaml", ".image-builder-info")
+func (b *Build) getFilesToIgnore(dockerfile template.Dockerfile, stage string) []string {
+	res := append(dockerfile.GetDockerIgnores(), b.buildConf.DockerignoreForStage(stage)...)
+	res = append(res, ".dockerignore", "build.yaml", ".image-builder-info")
+	return res
 }
 
-func (b *Build) computeImageTag(dockerfile template.Dockerfile, context string) (string, error) {
-	hash, err := fileutils.ContentHashing(dockerfile.GetContentWithoutIgnoredLines(), context, b.getFilesToIgnore(dockerfile))
+func (b *Build) computeImageTag(dockerfile template.Dockerfile, context string, stage string) (string, error) {
+	hash, err := fileutils.ContentHashing(dockerfile.GetContentWithoutIgnoredLines(), context, b.getFilesToIgnore(dockerfile, stage))
 	if err != nil {
 		log.Errorf("Error while computing content hashing")
 		return "", err
