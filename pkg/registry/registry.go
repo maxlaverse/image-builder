@@ -2,6 +2,7 @@ package registry
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
@@ -15,6 +16,23 @@ func ImageWithDigest(ref string) (string, error) {
 	}
 
 	return fmt.Sprintf("%s@%s", desc.Ref.Context(), desc.Digest.String()), nil
+}
+
+func ImageAge(ref string) (time.Duration, error) {
+	desc, err := getManifest(ref)
+	if err != nil {
+		return time.Duration(0), err
+	}
+	img, err := desc.Image()
+	if err != nil {
+		return time.Duration(0), err
+	}
+	cfg, err := img.ConfigFile()
+	if err != nil {
+		return time.Duration(0), err
+	}
+	time.Now().Sub(cfg.Created.Time)
+	return time.Now().Sub(cfg.Created.Time), nil
 }
 
 func TagImage(source, dest string) error {

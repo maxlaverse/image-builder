@@ -3,10 +3,12 @@ package template
 import (
 	"bytes"
 	"io/ioutil"
+	"math"
 	"os"
 	"path"
 	"strings"
 	"text/template"
+	"time"
 
 	"github.com/maxlaverse/image-builder/pkg/executor"
 	"github.com/maxlaverse/image-builder/pkg/registry"
@@ -36,6 +38,7 @@ func (d *data) FuncMaps() template.FuncMap {
 		"BuilderStage":       d.BuilderStage,
 		"Concat":             d.Concat,
 		"ExternalImage":      d.ExternalImage,
+		"ImageAgeGeneration": d.ImageAgeGeneration,
 		"GitCommitShort":     d.GitCommitShort,
 		"HasFile":            d.HasFile,
 		"MandatoryParameter": d.MandatoryParameter,
@@ -59,6 +62,19 @@ func (d *data) ExternalImage(imageURL string) string {
 
 	log.Debugf("Replaced imageURL '%s' with '%s'", imageURL, digest)
 	return digest
+}
+
+// ImageAgeGeneration returns the age of an image
+func (d *data) ImageAgeGeneration(imageURL, generation string) float64 {
+	age, err := registry.ImageAge(imageURL)
+	if err != nil {
+		log.Fatalf("Error while calling ImageAge for '%s': %v", imageURL, err)
+	}
+	b, err := time.ParseDuration(generation)
+	if err != nil {
+		log.Fatalf("Error while ParseDuration '%s': %v", generation, err)
+	}
+	return math.Floor(age.Seconds() / b.Seconds())
 }
 
 // HasFile returns whether a file exist in the local context or not
