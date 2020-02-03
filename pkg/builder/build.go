@@ -47,7 +47,7 @@ func NewBuild(e engine.BuildEngine, exec executor.Executor, buildConf config.Bui
 }
 
 // GetStageBuildOrder returns in which order the stages should be build
-func (b *Build) GetStageBuildOrder(finalStage string) ([]string, error) {
+func (b *Build) GetStageBuildOrder(stages []string) ([]string, error) {
 	stageGraph := NewGraph()
 	for _, stage := range b.buildDef.GetStages() {
 		builderPath := b.buildDef.GetStagePath(stage)
@@ -61,7 +61,7 @@ func (b *Build) GetStageBuildOrder(finalStage string) ([]string, error) {
 		stageGraph.AddNode(stage, dockerfile.GetRequiredStages()...)
 	}
 
-	return stageGraph.ResolveUpTo(finalStage)
+	return stageGraph.ResolveUpTo(stages)
 }
 
 // BuildStage pulls or build an image and push it

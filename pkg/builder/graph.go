@@ -33,13 +33,22 @@ func (g *Graph) AddNode(name string, deps ...string) {
 }
 
 // ResolveUpTo returns an ordered list of the dependencies required
-// in other to fullfil finalNode
-func (g *Graph) ResolveUpTo(finalNode string) ([]string, error) {
-	if _, ok := g.nodeNames[finalNode]; !ok {
-		return nil, fmt.Errorf("Final node doesn't exist in graph")
+// in other to fullfil the build of the provided stages
+func (g *Graph) ResolveUpTo(stages []string) ([]string, error) {
+	//TODO: Feels very naive. Looks for improvement
+	for _, s := range stages {
+		if _, ok := g.nodeNames[s]; !ok {
+			return nil, fmt.Errorf("The request stage '%s' doesn't exist in graph", s)
+		}
 	}
-	deps := reverseAndDeduplicate(g.dependenciesOf(finalNode))
-	return append(deps, finalNode), nil
+
+	deps := []string{}
+	for _, s := range stages {
+		deps = append(deps, g.dependenciesOf(s)...)
+		deps = append(deps, s)
+	}
+
+	return reverseAndDeduplicate(deps), nil
 }
 
 func (g *Graph) dependenciesOf(name string) []string {

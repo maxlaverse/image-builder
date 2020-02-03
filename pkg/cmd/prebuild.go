@@ -58,11 +58,9 @@ func buildStageBase(opts buildCommandOptions) error {
 		}
 		opts.targetImage = prebuildConf.BuilderCache + "/" + conf.BuilderName
 
-		for _, s := range conf.Stages {
-			err := buildStageGeneric(opts, s, buildConf, path.Join(source, conf.BuilderName))
-			if err != nil {
-				return err
-			}
+		err := buildStageGeneric(opts, conf.Stages, buildConf, path.Join(source, conf.BuilderName))
+		if err != nil {
+			return err
 		}
 	}
 	return nil

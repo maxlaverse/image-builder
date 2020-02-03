@@ -22,8 +22,8 @@ type buildCommandOptions struct {
 	cacheImagePull     bool
 	dryRun             bool
 	engine             string
-	onlyPrepare        bool
 	targetImage        string
+	targetStages       []string
 }
 
 // NewBuildCmd returns a Cobra Command to build images
@@ -35,17 +35,13 @@ func NewBuildCmd() *cobra.Command {
 		TraverseChildren: true,
 		SilenceUsage:     true,
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			// return buildStageBase(opts)
-			return nil
-		},
-		RunE: func(cmd *cobra.Command, args []string) error {
-			// IDAE: Make the stage configurable:
-			// * Would allow to get multiple release artifacts from a single Builder
-			// * Would allow building other kind of artifact, like an image to mount and run tests in
 			if len(args) != 1 {
 				return fmt.Errorf("Wrong number of argument")
 			}
-			return buildStageApp(opts, "release", args[0])
+			return nil
+		},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return buildStageApp(opts, args[0])
 		},
 	}
 
@@ -54,13 +50,13 @@ func NewBuildCmd() *cobra.Command {
 	cmd.Flags().BoolVarP(&opts.cacheImagePush, "cache-image-push", "", true, "Push cache images to the registry")
 	cmd.Flags().BoolVarP(&opts.dryRun, "dry-run", "", false, "Only display the generated Dockerfiles")
 	cmd.Flags().StringVarP(&opts.engine, "engine", "", "docker", "Engine to use for building images")
-	cmd.Flags().BoolVarP(&opts.onlyPrepare, "only-prepare", "", false, "Ensure all cache images are available but don't build the final stage")
 	cmd.Flags().StringVarP(&opts.targetImage, "target-image", "t", "", "Specifies the name which will be assigned to the resulting image if the build process completes successfully")
+	cmd.Flags().StringArrayVarP(&opts.targetStages, "target-stages", "s", []string{"release"}, "Specifies the stages to build")
 
 	return cmd
 }
 
-func buildStageApp(opts buildCommandOptions, finalStage, buildContext string) error {
+func buildStageApp(opts buildCommandOptions, buildContext string) error {
 	buildConf, err := config.ReadBuildConfiguration(opts.buildConfiguration)
 	if err != nil {
 		return err
@@ -76,10 +72,10 @@ func buildStageApp(opts buildCommandOptions, finalStage, buildContext string) er
 	if err != nil {
 		return err
 	}
-	return buildStageGeneric(opts, finalStage, buildConf, buildContext)
+	return buildStageGeneric(opts, opts.targetStages, buildConf, buildContext)
 }
 
-func buildStageGeneric(opts buildCommandOptions, finalStage string, buildConf config.BuildConfiguration, buildContext string) error {
+func buildStageGeneric(opts buildCommandOptions, stages []string, buildConf config.BuildConfiguration, buildContext string) error {
 	builderDef, err := config.NewBuilderDef(buildConf.BuilderSource, buildConf.BuilderName)
 	if err != nil {
 		return err
@@ -91,16 +87,13 @@ func buildStageGeneric(opts buildCommandOptions, finalStage string, buildConf co
 	}
 
 	b := builder.NewBuild(engineCli, executor.New(), buildConf, builderDef, opts.dryRun, opts.cacheImagePull, opts.cacheImagePush, opts.targetImage, buildContext)
-	orderedStages, err := b.GetStageBuildOrder(finalStage)
+	orderedStages, err := b.GetStageBuildOrder(stages)
 	if err != nil {
 		return err
 	}
 
 	log.Infof("The stages will be build in the following order: %s\n", strings.Join(orderedStages, ", "))
 	for _, stage := range orderedStages {
-		if opts.onlyPrepare && stage == finalStage {
-			break
-		}
 		err := b.BuildStage(stage)
 		if err != nil {
 			return err
