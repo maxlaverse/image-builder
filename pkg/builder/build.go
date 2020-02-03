@@ -167,6 +167,13 @@ func (b *Build) pullOrBuildStage(dockerImage, stage string) (string, error) {
 		if err != nil {
 			return dockerImageWithTag, err
 		}
+		for _, t := range dockerfile.GetTagAliases() {
+			log.Infof("Tagging image '%s' as '%s'", dockerImageWithTag, t)
+			err := registry.TagImage(dockerImageWithTag, t)
+			if err != nil {
+				return dockerImageWithTag, err
+			}
+		}
 	}
 
 	return dockerImageWithTag, nil

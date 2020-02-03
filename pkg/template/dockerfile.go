@@ -9,6 +9,9 @@ const (
 	// dirFriendlyTag allows to specify a suffix for the generated tag
 	dirFriendlyTag = "FriendlyTag"
 
+	// dirTagAlias allows to specify additional tags
+	dirTagAlias = "TagAlias"
+
 	// dirContentHashIgnoreNextLine tells the content ahsing algorithm to ignore the
 	// next line
 	dirContentHashIgnoreNextLine = "ContentHashIgnoreNextLie"
@@ -38,6 +41,7 @@ type Dockerfile interface {
 	GetContentWithoutIgnoredLines() string
 	GetDockerIgnores() []string
 	GetFriendlyTag() string
+	GetTagAliases() []string
 	GetRequiredStages() []string
 	UseBuilderContext() bool
 }
@@ -79,6 +83,14 @@ func (d *dockerfile) GetDockerIgnores() []string {
 		return []string{}
 	}
 	return d.data[dirDockerIgnore]
+}
+
+// GetTagAliases returns the list of tag aliases
+func (d *dockerfile) GetTagAliases() []string {
+	if d.data[dirTagAlias] == nil {
+		return []string{}
+	}
+	return d.data[dirTagAlias]
 }
 
 // GetFriendlyTag returns the friendly tag
