@@ -44,8 +44,8 @@ func (g *Graph) ResolveUpTo(stages []string) ([]string, error) {
 
 	deps := []string{}
 	for _, s := range stages {
-		deps = append(deps, g.dependenciesOf(s)...)
 		deps = append(deps, s)
+		deps = append(deps, g.dependenciesOf(s)...)
 	}
 
 	return reverseAndDeduplicate(deps), nil
