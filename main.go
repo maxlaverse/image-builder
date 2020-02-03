@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"math"
+	"os"
 
 	"github.com/maxlaverse/image-builder/pkg/cmd"
 	log "github.com/sirupsen/logrus"
@@ -17,7 +17,7 @@ func main() {
 		Long:             "Build container images for many different application types",
 		TraverseChildren: true,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
-			log.SetLevel(log.Level(math.Min(float64(verbose + 4),6.0)))
+			log.SetLevel(log.Level(math.Min(float64(verbose+4), 6.0)))
 			log.SetFormatter(&log.TextFormatter{})
 		},
 	}
@@ -25,6 +25,7 @@ func main() {
 
 	command.AddCommand(cmd.NewBuildCmd())
 	command.AddCommand(cmd.NewPreBuildCmd())
+	command.AddCommand(cmd.NewConfigCmd())
 
 	if err := command.Execute(); err != nil {
 		fmt.Println(err)
