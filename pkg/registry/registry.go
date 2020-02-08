@@ -2,6 +2,7 @@ package registry
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/go-containerregistry/pkg/authn"
@@ -15,7 +16,9 @@ func ImageWithDigest(ref string) (string, error) {
 		return "", err
 	}
 
-	return fmt.Sprintf("%s@%s", desc.Ref.Context(), desc.Digest.String()), nil
+	// See https://github.com/google/go-containerregistry/issues/68
+	context := strings.Replace(desc.Ref.Context().String(), "index.docker.io", "docker.io", -1)
+	return fmt.Sprintf("%s@%s", context, desc.Digest.String()), nil
 }
 
 func ImageAge(ref string) (time.Duration, error) {
@@ -59,6 +62,7 @@ func ImageExists(ref string) (bool, error) {
 }
 
 func getManifest(r string) (*remote.Descriptor, error) {
+	// TODO: Enable name.StrictValidation?
 	ref, err := name.ParseReference(r)
 	if err != nil {
 		return nil, fmt.Errorf("parsing reference %q: %v", r, err)
