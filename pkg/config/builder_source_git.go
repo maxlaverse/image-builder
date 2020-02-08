@@ -23,11 +23,19 @@ func NewBuilderDefinitionGit(source, name string) (*BuilderDef, error) {
 	log.Infof("Will clone repository into '%s'", cachePath)
 	_, err = os.Stat(cachePath)
 	if err == nil {
-		cmd := exec.Command("git", "reset", "--hard", "origin/master")
+		cmd := exec.Command("git", "fetch", "--all")
 		cmd.Dir = cachePath
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		err := cmd.Run()
+		if err != nil {
+			return nil, err
+		}
+		cmd = exec.Command("git", "reset", "--hard", "origin/master")
+		cmd.Dir = cachePath
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		err = cmd.Run()
 		if err != nil {
 			return nil, err
 		}

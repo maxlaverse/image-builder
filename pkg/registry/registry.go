@@ -62,8 +62,7 @@ func ImageExists(ref string) (bool, error) {
 }
 
 func getManifest(r string) (*remote.Descriptor, error) {
-	// TODO: Enable name.StrictValidation?
-	ref, err := name.ParseReference(r)
+	ref, err := name.ParseReference(r, name.StrictValidation)
 	if err != nil {
 		return nil, fmt.Errorf("parsing reference %q: %v", r, err)
 	}
