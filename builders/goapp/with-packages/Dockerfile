@@ -1,6 +1,6 @@
 # DockerIgnore **/.git
 # DockerIgnore .image-builder-info
-FROM {{ExternalImage (Concat "debian:" (Parameter "osRelease" "buster"))}}
+FROM {{ExternalImage (Concat "docker.io/library/debian:" (Parameter "osRelease" "buster"))}}
 ENTRYPOINT ["/bin/{{MandatoryParameter "binary"}}"]
 WORKDIR /app
 {{if Parameter "runtimePackages"}}

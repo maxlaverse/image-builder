@@ -76,7 +76,7 @@ func buildStageApp(opts buildCommandOptions, buildContext string) error {
 }
 
 func buildStageGeneric(opts buildCommandOptions, stages []string, buildConf config.BuildConfiguration, buildContext string) error {
-	builderDef, err := config.NewBuilderDef(buildConf.BuilderSource, buildConf.BuilderName)
+	builderDef, err := config.NewBuilderDef(buildConf.Builder.Location, buildConf.Builder.Name)
 	if err != nil {
 		return err
 	}

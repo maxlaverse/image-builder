@@ -47,10 +47,12 @@ func buildStageBase(opts buildCommandOptions) error {
 
 	for _, conf := range prebuildConf.BasePreBuild {
 		buildConf := config.BuildConfiguration{
-			BuilderSource: source,
-			BuilderCache:  prebuildConf.BuilderCache,
-			BuilderName:   conf.BuilderName,
-			ImageSpec:     conf.Spec,
+			Builder: config.BuildBuilderConfiguration{
+				Location:   source,
+				ImageCache: prebuildConf.BuilderCache,
+				Name:       conf.BuilderName,
+			},
+			ImageSpec: conf.Spec,
 		}
 
 		if len(conf.BuilderName) == 0 {

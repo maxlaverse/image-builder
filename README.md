@@ -11,12 +11,14 @@ multi-stage build with the [`COPY --from` directive][dockerfile-copy].
 
 Only [Docker][docker-website] and [Podman][podman-website] are supported as Container Engine.
 
+**Disclaimer: This project is experimental.**
+
 ----
 
 ## Table of contents
 * [Prerequisites](#prerequisites)
 * [Usage](#usage)
-* [Parts of an image build](#parts-of-an-image-build)
+* [Concepts](#concepts)
   * [Build Configuration](#build-configuration)
   * [Builder Definition](#builder-definition)
 * [Cache invalidation](#cache-invalidation)
@@ -38,30 +40,32 @@ Only [Docker][docker-website] and [Podman][podman-website] are supported as Cont
 $ git clone git@github.com/maxlaverse/example-of-application.git
 $ cd example-of-application
 $ cat <<EOF > build.yaml
-builderSource: git@github.com:maxlaverse/image-builder-collection.git
-builderName: goapp
+builder:
+  name: goapp
+  location: ssh://git@github.com:maxlaverse/image-builder-collection.git[#branch:[subfolder]]
 EOF
 
 $ image-build build .
 [...]
 ```
 
-## Parts of an image build
+## Concepts
 
 ### Build Configuration
 The Build Configuration is a YAML file, usually specific to an application and commited in its repository. It contains
 the required settings to build a Container Image out of the source code of an application. There are two mandatory
 information:
-* `builderName`: the name of the Builder which is like the type of the application (e.g: Go, Ruby, Scala)
-* `builderSource`: the location of the Builders (e.g filesystem, git repository)
+* `builder.name`: the name of the Builder which is like the type of the application (e.g: Go, Ruby, Scala)
+* `builder.location`: the location of the Builders (e.g filesystem, git repository)
 
 **Example:**
 ```
-builderName: goapp
-builderSource: git@github.com:maxlaverse/image-builder-collection.git
+builder:
+  name: goapp
+  location: ssh://git@github.com/maxlaverse/image-builder.git#master:builders
 
-# [optional] Image registry to lookup for commonly used cache images
-builderCache: docker.io/maxlaverse
+  # [optional] Image registry to lookup for commonly used cache images
+  cache: docker.io/maxlaverse
 
 # Additional settings for the Dockerfile generation
 imageSpec:

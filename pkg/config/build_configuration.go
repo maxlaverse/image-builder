@@ -9,11 +9,16 @@ import (
 
 // BuildConfiguration represents the build configuration of an application
 type BuildConfiguration struct {
-	BuilderCache  string                            `yaml:"builderCache"`
-	BuilderName   string                            `yaml:"builderName"`
-	BuilderSource string                            `yaml:"builderSource"`
-	ImageSpec     map[string]interface{}            `yaml:"imageSpec"`
-	StageSpec     map[string]map[string]interface{} `yaml:"stageSpec"`
+	Builder   BuildBuilderConfiguration         `yaml:"builder"`
+	ImageSpec map[string]interface{}            `yaml:"imageSpec"`
+	StageSpec map[string]map[string]interface{} `yaml:"stageSpec"`
+}
+
+// BuildBuilderConfiguration represents the settings for the Builder to use
+type BuildBuilderConfiguration struct {
+	Name       string `yaml:"name"`
+	Location   string `yaml:"location"`
+	ImageCache string `yaml:"imageCache"`
 }
 
 // ReadBuildConfiguration unserialize the build configuration
@@ -35,7 +40,7 @@ func ReadBuildConfiguration(filepath string) (BuildConfiguration, error) {
 
 // IsBuilderCacheSet returns wether a buildercache is specified
 func (c *BuildConfiguration) IsBuilderCacheSet() bool {
-	return true
+	return len(c.Builder.ImageCache) > 0
 }
 
 // DockerignoreForStage returns the Dockerfiles to ignore
@@ -57,7 +62,7 @@ func (c *BuildConfiguration) DockerignoreForStage(stageName string) []string {
 }
 
 func (c *BuildConfiguration) normalize() {
-	if strings.HasSuffix(c.BuilderCache, "/") {
-		c.BuilderCache = strings.TrimSuffix(c.BuilderCache, "/")
+	if strings.HasSuffix(c.Builder.ImageCache, "/") {
+		c.Builder.ImageCache = strings.TrimSuffix(c.Builder.ImageCache, "/")
 	}
 }

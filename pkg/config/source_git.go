@@ -7,17 +7,33 @@ import (
 	"os/exec"
 	"os/user"
 	"path"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
 )
 
-func NewBuilderDefinitionGit(source, name string) (*BuilderDef, error) {
+func IsSourceGit(location string) bool {
+	return strings.Contains(location, "http") || strings.Contains(location, "git@")
+}
+
+func NewBuilderDefinitionGit(location, name string) (*BuilderDef, error) {
 	cacheRoot, err := getCacheRoot()
 	if err != nil {
 		return nil, err
 	}
 
-	sum := fmt.Sprintf("%x", md5.Sum([]byte(source)))
+	parts := strings.Split(location, "#")
+	repository := parts[0]
+	branch := "master"
+	subDirectory := ""
+	if len(parts) > 1 {
+		otherParts := strings.Split(parts[1], ":")
+		branch = otherParts[0]
+		if len(otherParts) > 1 {
+			subDirectory = otherParts[1]
+		}
+	}
+	sum := fmt.Sprintf("%x", md5.Sum([]byte(location)))
 
 	cachePath := path.Join(cacheRoot, sum)
 	log.Infof("Will clone repository into '%s'", cachePath)
@@ -31,16 +47,8 @@ func NewBuilderDefinitionGit(source, name string) (*BuilderDef, error) {
 		if err != nil {
 			return nil, err
 		}
-		cmd = exec.Command("git", "reset", "--hard", "origin/master")
-		cmd.Dir = cachePath
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		err = cmd.Run()
-		if err != nil {
-			return nil, err
-		}
 	} else {
-		cmd := exec.Command("git", "clone", source, cachePath)
+		cmd := exec.Command("git", "clone", repository, cachePath)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		err := cmd.Run()
@@ -48,8 +56,17 @@ func NewBuilderDefinitionGit(source, name string) (*BuilderDef, error) {
 			return nil, err
 		}
 	}
+
+	cmd := exec.Command("git", "reset", "--hard", fmt.Sprintf("origin/%s", branch))
+	cmd.Dir = cachePath
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	err = cmd.Run()
+	if err != nil {
+		return nil, err
+	}
 	return &BuilderDef{
-		source: path.Join(cacheRoot, sum, name),
+		path: path.Join(cacheRoot, sum, subDirectory, name),
 	}, nil
 }
 
