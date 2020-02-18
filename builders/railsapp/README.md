@@ -46,10 +46,10 @@ imageSpec:
 $ image-builder build -s test .
 [...]
 INFO[0004] Build finished! The following images have been pulled or built:
-INFO[0004] * generated-rails-signup-thankyou:test-d844737e
 INFO[0004] * generated-rails-signup-thankyou:base-buster-ruby-2.5.1-0894bbea
 INFO[0004] * generated-rails-signup-thankyou:cache-gems-production-only-c4e4e61b
 INFO[0004] * generated-rails-signup-thankyou:cache-gems-full-1ac36509
+INFO[0004] * generated-rails-signup-thankyou:test-d844737e
 
 $ docker run -ti generated-rails-signup-thankyou:test-d844737e
 Run options: --seed 59663

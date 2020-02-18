@@ -12,6 +12,7 @@ import (
 	"github.com/maxlaverse/image-builder/pkg/config"
 	"github.com/maxlaverse/image-builder/pkg/engine"
 	"github.com/maxlaverse/image-builder/pkg/executor"
+	"github.com/maxlaverse/image-builder/pkg/utils"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -102,6 +103,16 @@ func buildStageGeneric(opts buildCommandOptions, stages []string, buildConf conf
 	log.Info("Build finished! The following images have been pulled or built:")
 	out := ""
 	for k, image := range b.Images() {
+		if utils.ItemExists(opts.targetStages, k) {
+			continue
+		}
+		log.Infof("* %s\n", image)
+		out = out + k + "|" + image + "\n"
+	}
+	for k, image := range b.Images() {
+		if !utils.ItemExists(opts.targetStages, k) {
+			continue
+		}
 		log.Infof("* %s\n", image)
 		out = out + k + "|" + image + "\n"
 	}
