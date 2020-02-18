@@ -37,7 +37,7 @@ func (g *Graph) AddNode(name string, deps ...string) {
 func (g *Graph) ResolveUpTo(stages []string) ([]string, error) {
 	//TODO: Feels very naive. Looks for improvement
 	for _, s := range stages {
-		if _, ok := g.nodeNames[s]; !ok {
+		if !g.hasNode(s) {
 			return nil, fmt.Errorf("The request stage '%s' doesn't exist in graph", s)
 		}
 	}
@@ -45,19 +45,35 @@ func (g *Graph) ResolveUpTo(stages []string) ([]string, error) {
 	deps := []string{}
 	for _, s := range stages {
 		deps = append(deps, s)
-		deps = append(deps, g.dependenciesOf(s)...)
+		newDeps, err := g.dependenciesOf(s)
+		if err != nil {
+			return nil, err
+		}
+		deps = append(deps, newDeps...)
 	}
 
 	return reverseAndDeduplicate(deps), nil
 }
 
-func (g *Graph) dependenciesOf(name string) []string {
+func (g *Graph) dependenciesOf(name string) ([]string, error) {
 	deps := []string{}
 	for _, dep := range g.nodeNames[name].deps {
+		if !g.hasNode(dep) {
+			return nil, fmt.Errorf("The request stage '%s' doesn't exist in graph", dep)
+		}
 		deps = append(deps, g.nodeNames[dep].name)
-		deps = append(deps, g.dependenciesOf(dep)...)
+		newDeps, err := g.dependenciesOf(dep)
+		if err != nil {
+			return nil, err
+		}
+		deps = append(deps, newDeps...)
 	}
-	return deps
+	return deps, nil
+}
+
+func (g *Graph) hasNode(name string) bool {
+	_, ok := g.nodeNames[name]
+	return ok
 }
 
 func reverseAndDeduplicate(g []string) []string {
