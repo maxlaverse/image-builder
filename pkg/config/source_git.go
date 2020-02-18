@@ -57,6 +57,7 @@ func NewBuilderDefinitionGit(location, name string) (*BuilderDef, error) {
 		}
 	}
 
+	builderPath := path.Join(cacheRoot, sum, subDirectory, name)
 	cmd := exec.Command("git", "reset", "--hard", fmt.Sprintf("origin/%s", branch))
 	cmd.Dir = cachePath
 	cmd.Stdout = os.Stdout
@@ -65,8 +66,11 @@ func NewBuilderDefinitionGit(location, name string) (*BuilderDef, error) {
 	if err != nil {
 		return nil, err
 	}
+	if _, err := os.Stat(builderPath); os.IsNotExist(err) {
+		return nil, fmt.Errorf("Unable to find Builder '%s' at '%s'", name, builderPath)
+	}
 	return &BuilderDef{
-		path: path.Join(cacheRoot, sum, subDirectory, name),
+		path: builderPath,
 	}, nil
 }
 
