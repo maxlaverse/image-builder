@@ -25,8 +25,9 @@ The builder consists only in two stages:
 ## Example
 
 ```yaml
-builderSource: git@github.com:maxlaverse/image-builder
-builderName: goapp
+builder:
+  name: goapp
+  location: ssh://git@github.com:maxlaverse/image-builder
 imageSpec:
   osRelease: buster
   goVersion: "1.13"

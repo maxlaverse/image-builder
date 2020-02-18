@@ -11,6 +11,8 @@ multi-stage build with the [`COPY --from` directive][dockerfile-copy].
 
 Only [Docker][docker-website] and [Podman][podman-website] are supported as Container Engine.
 
+----
+
 **Disclaimer: This project is experimental.**
 
 ----
@@ -32,7 +34,7 @@ Only [Docker][docker-website] and [Podman][podman-website] are supported as Cont
 ## Prerequisites
 * The `image-builder` binary
 * An application with a [Build Configuration](#build-configuration)
-* A [Builder Definition](#builder-definition) for the type of application to be built
+* A [Builder Definition](#builder-definition) for the type of application to be built (e.g [Go][builder-goapp], [Rails][builder-railsapp])
 * A Container Engine (Docker and Podman are supported)
 
 ## Usage
@@ -224,3 +226,5 @@ the application's image registry.
 [dockerfile-copy]: https://docs.docker.com/engine/reference/builder/#copy
 [docker-website]: https://docs.docker.com/
 [podman-website]: https://podman.io/
+[builder-goapp]: builders/goapp/README.md
+[builder-railsapp]: builders/railsapp/README.md
