@@ -43,3 +43,7 @@ func (cli *dockerCli) Push(image string) error {
 func (cli *dockerCli) Pull(image string) error {
 	return cli.cmd("pull", image)
 }
+
+func (cli *dockerCli) Tag(src, dst string) error {
+	return cli.cmd("tag", src, dst)
+}

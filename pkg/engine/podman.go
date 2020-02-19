@@ -43,3 +43,7 @@ func (cli *podmanCli) Push(image string) error {
 func (cli *podmanCli) Pull(image string) error {
 	return cli.cmd("pull", image)
 }
+
+func (cli *podmanCli) Tag(src, dst string) error {
+	return cli.cmd("tag", src, dst)
+}

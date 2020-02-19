@@ -11,6 +11,7 @@ type BuildEngine interface {
 	Build(dockerfile, image, context string) error
 	Push(image string) error
 	Pull(image string) error
+	Tag(src, dst string) error
 }
 
 // New returns a new container builder engine
