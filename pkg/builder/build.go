@@ -30,6 +30,12 @@ type Build struct {
 	buildConf      config.BuildConfiguration
 }
 
+// BuildStatus represent the status of an image built
+type BuildStatus struct {
+	ImageURL string
+	Built    bool
+}
+
 // NewBuild returns a new instance of Build
 func NewBuild(e engine.BuildEngine, exec executor.Executor, buildConf config.BuildConfiguration, r *config.BuilderDef, dryRun, cacheImagePull, cacheImagePush bool, targetImage string, localContext string) *Build {
 	return &Build{
@@ -65,26 +71,24 @@ func (b *Build) GetStageBuildOrder(stages []string) ([]string, error) {
 }
 
 // BuildStage pulls or build an image and push it
-func (b *Build) BuildStage(stage string) error {
+func (b *Build) BuildStage(stage string) (BuildStatus, error) {
 	log.Debugf("Building stage '%s'", stage)
-	dockerImageWithTag, err := b.pullOrBuildStage(b.targetImage, stage)
+	buildStatus, err := b.pullOrBuildStage(b.targetImage, stage)
 	if err != nil {
 		log.Debugf("Unable to pull or build stage '%s': %v", stage, err)
-		return err
+		return buildStatus, err
 	}
-	if len(dockerImageWithTag) > 0 {
-		b.images[stage] = dockerImageWithTag
-	}
-	return nil
+	b.images[stage] = buildStatus.ImageURL
+	return buildStatus, nil
 }
 
 // pullOrBuildStage lookup the builder cache for an already existing image for the given content and build it otherwise
-func (b *Build) pullOrBuildStage(dockerImage, stage string) (string, error) {
+func (b *Build) pullOrBuildStage(dockerImage, stage string) (BuildStatus, error) {
 	builderPath := b.buildDef.GetStagePath(stage)
 	data := template.NewBuildData(b.buildConf, b.localContext, b.images)
 	dockerfile, err := template.RenderDockerfile(path.Join(builderPath, "Dockerfile"), data, b.exec)
 	if err != nil {
-		return "", err
+		return BuildStatus{}, err
 	}
 
 	if b.dryRun {
@@ -93,7 +97,7 @@ func (b *Build) pullOrBuildStage(dockerImage, stage string) (string, error) {
 
 	dockerfilePath, err := writeDockerFile(dockerfile.GetContent())
 	if err != nil {
-		return "", err
+		return BuildStatus{}, err
 	}
 	defer os.Remove(dockerfilePath)
 
@@ -107,14 +111,14 @@ func (b *Build) pullOrBuildStage(dockerImage, stage string) (string, error) {
 	dockerignorePath := path.Join(buildContext, ".dockerignore")
 	err = writeDockerIgnore(dockerignorePath, b.getFilesToIgnore(dockerfile, stage))
 	if err != nil {
-		return "", err
+		return BuildStatus{}, err
 	}
 	defer os.Remove(dockerignorePath)
 
 	tag, err := b.computeImageTag(dockerfile, buildContext, stage)
 	if err != nil {
 		log.Errorf("Error while computing the tag for the image: %v", err)
-		return "", err
+		return BuildStatus{}, err
 	}
 
 	var dockerImageWithTag string
@@ -124,12 +128,12 @@ func (b *Build) pullOrBuildStage(dockerImage, stage string) (string, error) {
 		exists, err := registry.ImageExists(dockerImageWithTag)
 		if err != nil {
 			log.Errorf("Error while computing the tag for the image: %v", err)
-			return "", err
+			return BuildStatus{}, err
 		}
 
 		if exists {
 			log.Infof("An image for '%s' was found in the builder's cache", dockerImageWithTag)
-			return dockerImageWithTag, nil
+			return BuildStatus{ImageURL: dockerImageWithTag, Built: false}, nil
 		}
 		log.Debugf("No image found for '%s' in the Builder's cache", dockerImageWithTag)
 	}
@@ -141,47 +145,47 @@ func (b *Build) pullOrBuildStage(dockerImage, stage string) (string, error) {
 		exists, err := registry.ImageExists(dockerImageWithTag)
 		if err != nil {
 			log.Errorf("Error while computing the tag for the image: %v", err)
-			return "", err
+			return BuildStatus{}, err
 		}
 		if exists {
 			log.Debugf("An image for '%s' was found in the application's cache", dockerImageWithTag)
-			return dockerImageWithTag, nil
+			return BuildStatus{ImageURL: dockerImageWithTag, Built: false}, nil
 		}
 	}
 
 	if b.dryRun {
 		log.Infof("Skipping build of '%s' because of dry run", dockerImageWithTag)
-		return dockerImageWithTag, nil
+		return BuildStatus{ImageURL: dockerImageWithTag, Built: false}, nil
 	}
 
 	log.Infof("A new image needs to be built for '%s'", dockerImageWithTag)
 	err = b.engine.Build(dockerfilePath, dockerImageWithTag, buildContext)
 	if err != nil {
 		log.Errorf("The image build failed for '%s'", dockerImageWithTag)
-		return dockerImageWithTag, err
+		return BuildStatus{}, err
 	}
 
 	if b.cacheImagePush {
 		log.Infof("Pushing image '%s'", dockerImageWithTag)
 		err := b.engine.Push(dockerImageWithTag)
 		if err != nil {
-			return dockerImageWithTag, err
+			return BuildStatus{}, err
 		}
 		for _, t := range dockerfile.GetTagAliases() {
 			log.Infof("Tagging image '%s' as '%s'", dockerImageWithTag, t)
 			err := registry.TagImage(dockerImageWithTag, t)
 			if err != nil {
-				return dockerImageWithTag, err
+				return BuildStatus{}, err
 			}
 		}
 	}
 
-	return dockerImageWithTag, nil
+	return BuildStatus{ImageURL: dockerImageWithTag, Built: true}, nil
 }
 
 func (b *Build) getFilesToIgnore(dockerfile template.Dockerfile, stage string) []string {
 	res := append(dockerfile.GetDockerIgnores(), b.buildConf.DockerignoreForStage(stage)...)
-	res = append(res, ".dockerignore", "build.yaml", ".image-builder-info")
+	res = append(res, ".dockerignore", "build.yaml")
 	return res
 }
 
@@ -195,11 +199,6 @@ func (b *Build) computeImageTag(dockerfile template.Dockerfile, context string, 
 		return fmt.Sprintf("%s-%s", dockerfile.GetFriendlyTag(), hash), nil
 	}
 	return hash, nil
-}
-
-// Images returns the images the builder had to pull or build
-func (b *Build) Images() map[string]string {
-	return b.images
 }
 
 func writeDockerFile(dockerfile string) (string, error) {

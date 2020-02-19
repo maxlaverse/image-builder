@@ -1,5 +1,4 @@
 # DockerIgnore **/.git
-# DockerIgnore .image-builder-info
 FROM {{BuilderStage "modules"}} AS builder
 COPY . .
 RUN go build

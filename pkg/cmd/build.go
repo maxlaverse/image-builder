@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -12,7 +11,6 @@ import (
 	"github.com/maxlaverse/image-builder/pkg/config"
 	"github.com/maxlaverse/image-builder/pkg/engine"
 	"github.com/maxlaverse/image-builder/pkg/executor"
-	"github.com/maxlaverse/image-builder/pkg/utils"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -25,11 +23,13 @@ type buildCommandOptions struct {
 	engine             string
 	targetImage        string
 	targetStages       []string
+	extraTags          map[string][]string
 }
 
 // NewBuildCmd returns a Cobra Command to build images
 func NewBuildCmd() *cobra.Command {
 	var opts buildCommandOptions
+	var extraTagArray []string
 	cmd := &cobra.Command{
 		Use:              "build [options] <buildContext>",
 		Short:            "Build an image from a Build Definition file",
@@ -38,6 +38,17 @@ func NewBuildCmd() *cobra.Command {
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) != 1 {
 				return fmt.Errorf("Wrong number of argument")
+			}
+			opts.extraTags = map[string][]string{}
+			for _, v := range extraTagArray {
+				parts := strings.Split(v, "=")
+				if len(parts) < 2 {
+					return fmt.Errorf("Invalid extra tag format")
+				}
+				if opts.extraTags[parts[0]] == nil {
+					opts.extraTags[parts[0]] = []string{}
+				}
+				opts.extraTags[parts[0]] = append(opts.extraTags[parts[0]], parts[1])
 			}
 			return nil
 		},
@@ -52,6 +63,7 @@ func NewBuildCmd() *cobra.Command {
 	cmd.Flags().BoolVarP(&opts.dryRun, "dry-run", "", false, "Only display the generated Dockerfiles")
 	cmd.Flags().StringVarP(&opts.engine, "engine", "", "docker", "Engine to use for building images")
 	cmd.Flags().StringVarP(&opts.targetImage, "target-image", "t", "", "Specifies the name which will be assigned to the resulting image if the build process completes successfully")
+	cmd.Flags().StringArrayVarP(&extraTagArray, "extra-tag", "", []string{}, "Extra tag if the stage was built (format: <stage>=<tag>")
 	cmd.Flags().StringArrayVarP(&opts.targetStages, "target-stages", "s", []string{"release"}, "Specifies the stages to build")
 
 	return cmd
@@ -94,30 +106,36 @@ func buildStageGeneric(opts buildCommandOptions, stages []string, buildConf conf
 	}
 
 	log.Infof("The stages will be build in the following order: %s\n", strings.Join(orderedStages, ", "))
+	imageURLs := []string{}
 	for _, stage := range orderedStages {
-		err := b.BuildStage(stage)
+		// Build stage
+		buildStatus, err := b.BuildStage(stage)
 		if err != nil {
 			return err
 		}
-	}
-	log.Info("Build finished! The following images have been pulled or built:")
-	out := ""
-	for k, image := range b.Images() {
-		if utils.ItemExists(opts.targetStages, k) {
-			continue
+
+		// Add extra tags
+		if buildStatus.Built {
+			for _, j := range opts.extraTags[stage] {
+				err = engineCli.Tag(buildStatus.ImageURL, opts.targetImage+":"+j)
+				if err != nil {
+					return err
+				}
+			}
 		}
-		log.Infof("* %s\n", image)
-		out = out + k + "|" + image + "\n"
-	}
-	for k, image := range b.Images() {
-		if !utils.ItemExists(opts.targetStages, k) {
-			continue
+
+		// Compute image URLs to display in the summary
+		if len(opts.extraTags[stage]) > 0 {
+			imageURLs = append(imageURLs, fmt.Sprintf("%s [built:%v] (extra tag: %s)", buildStatus.ImageURL, buildStatus.Built, strings.Join(opts.extraTags[stage], ", ")))
+		} else {
+			imageURLs = append(imageURLs, fmt.Sprintf("%s [built:%v]", buildStatus.ImageURL, buildStatus.Built))
 		}
-		log.Infof("* %s\n", image)
-		out = out + k + "|" + image + "\n"
 	}
 
-	ioutil.WriteFile(buildContext+"/.image-builder-info", []byte(out), 0644)
+	log.Info("Build finished! The following images have been pulled or built:")
+	for _, image := range imageURLs {
+		log.Infof("* %s\n", image)
+	}
 
 	return nil
 }
