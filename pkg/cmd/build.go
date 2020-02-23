@@ -40,17 +40,11 @@ func NewBuildCmd(conf *config.CliConfiguration) *cobra.Command {
 			if len(args) != 1 {
 				return fmt.Errorf("Wrong number of argument")
 			}
-			opts.extraTags = map[string][]string{}
-			for _, v := range extraTagArray {
-				parts := strings.Split(v, "=")
-				if len(parts) < 2 {
-					return fmt.Errorf("Invalid extra tag format")
-				}
-				if opts.extraTags[parts[0]] == nil {
-					opts.extraTags[parts[0]] = []string{}
-				}
-				opts.extraTags[parts[0]] = append(opts.extraTags[parts[0]], parts[1])
+			extraTags, err := parseExtraTagArray(extraTagArray)
+			if err != nil {
+				return err
 			}
+			opts.extraTags = extraTags
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -68,6 +62,21 @@ func NewBuildCmd(conf *config.CliConfiguration) *cobra.Command {
 	cmd.Flags().StringArrayVarP(&opts.targetStages, "target-stages", "s", []string{"release"}, "Specifies the stages to build")
 
 	return cmd
+}
+
+func parseExtraTagArray(extraTagArray []string) (map[string][]string, error) {
+	extraTags := map[string][]string{}
+	for _, v := range extraTagArray {
+		parts := strings.Split(v, "=")
+		if len(parts) < 2 {
+			return extraTags, fmt.Errorf("Invalid extra tag format")
+		}
+		if extraTags[parts[0]] == nil {
+			extraTags[parts[0]] = []string{}
+		}
+		extraTags[parts[0]] = append(extraTags[parts[0]], parts[1])
+	}
+	return extraTags, nil
 }
 
 func buildStageApp(opts buildCommandOptions, buildContext string) error {
