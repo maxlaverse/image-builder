@@ -26,7 +26,7 @@ The builder consists only in two stages:
 
 ```yaml
 builder:
-  name: goapp
+  name: go-debian
   location: ssh://git@github.com:maxlaverse/image-builder
 imageSpec:
   osRelease: buster

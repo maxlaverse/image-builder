@@ -43,7 +43,7 @@ $ git clone git@github.com/maxlaverse/example-of-application.git
 $ cd example-of-application
 $ cat <<EOF > build.yaml
 builder:
-  name: goapp
+  name: go-debian
   location: ssh://git@github.com:maxlaverse/image-builder-collection.git[#branch:[subfolder]]
 EOF
 
@@ -63,7 +63,7 @@ information:
 **Example:**
 ```
 builder:
-  name: goapp
+  name: go-debian
   location: ssh://git@github.com/maxlaverse/image-builder.git#master:builders
 
   # [optional] Image registry to lookup for commonly used cache images
@@ -226,5 +226,5 @@ the application's image registry.
 [dockerfile-copy]: https://docs.docker.com/engine/reference/builder/#copy
 [docker-website]: https://docs.docker.com/
 [podman-website]: https://podman.io/
-[builder-goapp]: builders/goapp/README.md
-[builder-railsapp]: builders/railsapp/README.md
+[builder-goapp]: builders/go-debian/README.md
+[builder-railsapp]: builders/rails-debian/README.md

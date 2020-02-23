@@ -19,19 +19,19 @@ This builder uses Bundle 1.17 for managing dependencies.
 ## Stages
 The builder consists of 4 intermediate stages:
 * **base**: with Passenger and the Ruby version specified in the `.ruby-version` file
-* **cache-gems-production-only**: extending **base** with production gems
+* **cache-gems-production-only**: extending **cache-packages** with production gems
 * **cache-gems-full**: extending **cache-gems-production-only** with all gems
-* **cache-packages**: extending **base** with the system packages (`runtimePackages`)
+* **cache-packages**: extending **base** with the system packages (`runtimePackages`) and using **cache-gems-full** for asset compilation
 
 The builder has 2 final stages that can be executed:
-* **release**: with Ruby, Passenger, the production gems and the source code
-* **test**: with Ruby, Passenger, all gems and the source code. Executes `scripts/test.sh` when started
+* **release**: extending **cache-packages** and using **cache-gems-production-only** for the gems and **cache-gems-full** for asset compilation
+* **test**: extending **cache-gems-full** and includes the source code. Executes `scripts/test.sh` when started
 
 ## Example
 
 ```yaml
 builder:
-  name: railsapp
+  name: rails-debian
   location: ssh://git@github.com:maxlaverse/image-builder
 imageSpec:
   osRelease: buster
