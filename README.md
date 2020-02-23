@@ -209,9 +209,6 @@ the application's image registry.
 * Verify the push decision is alright
 * Remove all the TODOs
 * Mention origin of `import "github.com/docker/docker/pkg/fileutils"`
-* Add a configuration files to allow changing the defaults
-* Implement `image-builder config *`
-* Allow to overlay builders
 * Command to prune cache for an app, to prune baseLayers, manually
 * Allow to use wildcards when specifying stages to build
 * Explain cache invalidation, apt-get and how ImageAgeGeneration might help (and choose a better name for it)

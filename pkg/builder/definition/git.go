@@ -1,4 +1,4 @@
-package config
+package definition
 
 import (
 	"crypto/md5"
@@ -9,6 +9,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/maxlaverse/image-builder/pkg/builder"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -16,7 +17,9 @@ func IsSourceGit(location string) bool {
 	return strings.Contains(location, "http") || strings.Contains(location, "git@")
 }
 
-func NewBuilderDefinitionGit(location, name string) (*BuilderDef, error) {
+// FromGit creates a new Builder Definition from a git repository
+// Format is ssh://git@github.com:maxlaverse/image-builder-collection.git[#branch:[subfolder]]
+func FromGit(location, name string) (builder.Definition, error) {
 	cacheRoot, err := getCacheRoot()
 	if err != nil {
 		return nil, err
@@ -69,9 +72,7 @@ func NewBuilderDefinitionGit(location, name string) (*BuilderDef, error) {
 	if _, err := os.Stat(builderPath); os.IsNotExist(err) {
 		return nil, fmt.Errorf("Unable to find Builder '%s' at '%s'", name, builderPath)
 	}
-	return &BuilderDef{
-		path: builderPath,
-	}, nil
+	return builder.NewDefinitionFromPath(builderPath), nil
 }
 
 func getCacheRoot() (string, error) {

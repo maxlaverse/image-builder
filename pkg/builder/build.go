@@ -19,7 +19,7 @@ import (
 // Build transform BuildConfigurations into Docker images
 type Build struct {
 	engine         engine.BuildEngine
-	buildDef       *config.BuilderDef
+	buildDef       Definition
 	exec           executor.Executor
 	images         map[string]string
 	dryRun         bool
@@ -37,10 +37,10 @@ type BuildStatus struct {
 }
 
 // NewBuild returns a new instance of Build
-func NewBuild(e engine.BuildEngine, exec executor.Executor, buildConf config.BuildConfiguration, r *config.BuilderDef, dryRun, cacheImagePull, cacheImagePush bool, targetImage string, localContext string) *Build {
+func NewBuild(e engine.BuildEngine, exec executor.Executor, buildConf config.BuildConfiguration, buildDef Definition, dryRun, cacheImagePull, cacheImagePush bool, targetImage string, localContext string) *Build {
 	return &Build{
 		engine:         e,
-		buildDef:       r,
+		buildDef:       buildDef,
 		images:         map[string]string{},
 		dryRun:         dryRun,
 		localContext:   localContext,

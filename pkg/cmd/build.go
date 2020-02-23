@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/maxlaverse/image-builder/pkg/builder"
+	"github.com/maxlaverse/image-builder/pkg/builder/definition"
 	"github.com/maxlaverse/image-builder/pkg/config"
 	"github.com/maxlaverse/image-builder/pkg/engine"
 	"github.com/maxlaverse/image-builder/pkg/executor"
@@ -26,13 +27,13 @@ type buildCommandOptions struct {
 	extraTags          map[string][]string
 }
 
-// NewBuildCmd returns a Cobra Command to build images
-func NewBuildCmd() *cobra.Command {
+// NewBuildCmd returns a Cobra command to build images
+func NewBuildCmd(conf *config.CliConfiguration) *cobra.Command {
 	var opts buildCommandOptions
 	var extraTagArray []string
 	cmd := &cobra.Command{
-		Use:              "build [options] <buildContext>",
-		Short:            "Build an image from a Build Definition file",
+		Use:              "build [options] <directory>",
+		Short:            "Builds an image from a Build Definition file",
 		TraverseChildren: true,
 		SilenceUsage:     true,
 		PreRunE: func(cmd *cobra.Command, args []string) error {
@@ -57,11 +58,11 @@ func NewBuildCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&opts.buildConfiguration, "config", "c", "build.yaml", "Configuration file of the application")
-	cmd.Flags().BoolVarP(&opts.cacheImagePull, "cache-image-pull", "", true, "Pull cache images from the registry")
-	cmd.Flags().BoolVarP(&opts.cacheImagePush, "cache-image-push", "", true, "Push cache images to the registry")
+	cmd.Flags().StringVarP(&opts.buildConfiguration, "build-config", "c", "build.yaml", "Configuration file of the application")
+	cmd.Flags().BoolVarP(&opts.cacheImagePull, "cache-image-pull", "", conf.DefaultCacheImagePull, "Pull cache images from the registry")
+	cmd.Flags().BoolVarP(&opts.cacheImagePush, "cache-image-push", "", conf.DefaultCacheImagePush, "Push cache images to the registry")
 	cmd.Flags().BoolVarP(&opts.dryRun, "dry-run", "", false, "Only display the generated Dockerfiles")
-	cmd.Flags().StringVarP(&opts.engine, "engine", "", "docker", "Engine to use for building images")
+	cmd.Flags().StringVarP(&opts.engine, "engine", "", conf.DefaultEngine, "Engine to use for building images")
 	cmd.Flags().StringVarP(&opts.targetImage, "target-image", "t", "", "Specifies the name which will be assigned to the resulting image if the build process completes successfully")
 	cmd.Flags().StringArrayVarP(&extraTagArray, "extra-tag", "", []string{}, "Extra tag if the stage was built (format: <stage>=<tag>")
 	cmd.Flags().StringArrayVarP(&opts.targetStages, "target-stages", "s", []string{"release"}, "Specifies the stages to build")
@@ -89,7 +90,7 @@ func buildStageApp(opts buildCommandOptions, buildContext string) error {
 }
 
 func buildStageGeneric(opts buildCommandOptions, stages []string, buildConf config.BuildConfiguration, buildContext string) error {
-	builderDef, err := config.NewBuilderDef(buildConf.Builder.Location, buildConf.Builder.Name)
+	builderDef, err := definition.NewDefinitionFromPath(buildConf.Builder.Location, buildConf.Builder.Name)
 	if err != nil {
 		return err
 	}
