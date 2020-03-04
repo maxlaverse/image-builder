@@ -1,8 +1,15 @@
 package template
 
 import (
+	"bytes"
+	"fmt"
+	"io/ioutil"
 	"regexp"
 	"strings"
+	"text/template"
+
+	"github.com/maxlaverse/image-builder/pkg/config"
+	"github.com/maxlaverse/image-builder/pkg/executor"
 )
 
 const (
@@ -30,40 +37,83 @@ var (
 )
 
 type dockerfile struct {
-	content string
-	data    map[string][]string
-	deps    []string
+	builderContext string
+	content        *bytes.Buffer
+	currentContext string
+	data           map[string][]string
+	templateData   data
 }
 
 // Dockerfile is the interface for a parsed Dockerfile
 type Dockerfile interface {
+	GetBuildContext() string
 	GetContent() string
 	GetContentWithoutIgnoredLines() string
 	GetDockerIgnores() []string
 	GetFriendlyTag() string
 	GetTagAliases() []string
 	GetRequiredStages() []string
-	UseBuilderContext() bool
+	Render() error
 }
 
-// DockerfileFromContent returns a new parsed Dockerfile
-func DockerfileFromContent(content []byte, deps []string) Dockerfile {
+// NewDockerfile renders a given Dockerfile based on provided BuildData
+func NewDockerfile(content []byte, buildConf config.BuildConfiguration, currentContext, builderContext string, resolver StageResolver, exec executor.Executor) Dockerfile {
 	return &dockerfile{
-		content: string(content),
-		data:    parseDirectives(content),
-		deps:    deps,
+		builderContext: builderContext,
+		content:        bytes.NewBuffer(content),
+		currentContext: currentContext,
+		templateData:   newTemplateData(buildConf, currentContext, resolver, exec),
 	}
+}
+
+// NewDockerfileFromFile renders a given Dockerfile based on provided BuildData
+func NewDockerfileFromFile(filepath string, buildConf config.BuildConfiguration, currentContext, builderContext string, resolver StageResolver, exec executor.Executor) (Dockerfile, error) {
+	// Load Dockerfile
+	content, err := ioutil.ReadFile(filepath)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to read the Dockerfile template: %v", err)
+	}
+
+	return &dockerfile{
+		builderContext: builderContext,
+		content:        bytes.NewBuffer(content),
+		currentContext: currentContext,
+		templateData:   newTemplateData(buildConf, currentContext, resolver, exec),
+	}, nil
+}
+
+func (d *dockerfile) Render() error {
+	tmpl, err := template.New("dockerfile").Funcs(d.templateData.FuncMaps()).Parse(d.content.String())
+	if err != nil {
+		return fmt.Errorf("failed to parse the Dockerfile template: %w, %s", err, d.content)
+	}
+
+	newContent := bytes.NewBufferString("")
+	err = tmpl.Execute(newContent, d.templateData)
+	if err != nil {
+		return fmt.Errorf("failed to render the Dockerfile template: %w", err)
+	}
+
+	d.content = newContent
+	if d.data == nil {
+		d.data = parseDirectives(d.content.Bytes())
+	}
+
+	if d.useBuilderContext() {
+		d.currentContext = d.builderContext
+	}
+	return nil
 }
 
 // Returns the rendered content of the Dockerfile
 func (d *dockerfile) GetContent() string {
-	return d.content
+	return d.content.String()
 }
 
 // Returns the friendly rendered content
 func (d *dockerfile) GetContentWithoutIgnoredLines() string {
 	filteredLines := []string{}
-	lines := strings.Split(d.content, "\n")
+	lines := strings.Split(d.content.String(), "\n")
 	skip := false
 	for _, line := range lines {
 		if skip {
@@ -103,13 +153,22 @@ func (d *dockerfile) GetFriendlyTag() string {
 
 // GetRequiredStages returns the dependency of the Dockerfile
 func (d *dockerfile) GetRequiredStages() []string {
-	return d.deps
+	deps := []string{}
+	for dep := range d.templateData.deps {
+		deps = append(deps, dep)
+	}
+	return deps
 }
 
-// UseBuilderContext returns if the Dockerfile specified the builder context should be used
-func (d *dockerfile) UseBuilderContext() bool {
+// useBuilderContext returns if the Dockerfile specified the builder context should be used
+func (d *dockerfile) useBuilderContext() bool {
 	_, ok := d.data[dirUseBuilderContext]
 	return ok
+}
+
+// GetBuildContext returns the friendly tag
+func (d *dockerfile) GetBuildContext() string {
+	return d.currentContext
 }
 
 func parseDirectives(content []byte) map[string][]string {

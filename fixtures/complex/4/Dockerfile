@@ -1,0 +1,1 @@
+FROM registry.local/tenant/test:latest

@@ -10,8 +10,7 @@ GOOS ?= `go env GOOS`
 all: build
 
 test:
-	@cd pkg/builder && V=$(V) go test -timeout 3s -cover
-	@cd pkg/registry && V=$(V) go test -timeout 3s -cover
+	go test -timeout 3s -cover ./...
 
 build: build_dir
 	go build $(LDFLAGS) -o bin/image-builder

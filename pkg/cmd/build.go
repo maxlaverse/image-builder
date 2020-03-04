@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/maxlaverse/image-builder/pkg/builder"
-	"github.com/maxlaverse/image-builder/pkg/builder/definition"
 	"github.com/maxlaverse/image-builder/pkg/config"
 	"github.com/maxlaverse/image-builder/pkg/engine"
 	"github.com/maxlaverse/image-builder/pkg/executor"
@@ -64,21 +63,6 @@ func NewBuildCmd(conf *config.CliConfiguration) *cobra.Command {
 	return cmd
 }
 
-func parseExtraTagArray(extraTagArray []string) (map[string][]string, error) {
-	extraTags := map[string][]string{}
-	for _, v := range extraTagArray {
-		parts := strings.Split(v, "=")
-		if len(parts) < 2 {
-			return extraTags, fmt.Errorf("Invalid extra tag format")
-		}
-		if extraTags[parts[0]] == nil {
-			extraTags[parts[0]] = []string{}
-		}
-		extraTags[parts[0]] = append(extraTags[parts[0]], parts[1])
-	}
-	return extraTags, nil
-}
-
 func buildStageApp(opts buildCommandOptions, buildContext string) error {
 	buildConf, err := config.ReadBuildConfiguration(opts.buildConfiguration)
 	if err != nil {
@@ -99,7 +83,7 @@ func buildStageApp(opts buildCommandOptions, buildContext string) error {
 }
 
 func buildStageGeneric(opts buildCommandOptions, stages []string, buildConf config.BuildConfiguration, buildContext string) error {
-	builderDef, err := definition.NewDefinitionFromPath(buildConf.Builder.Location, buildConf.Builder.Name)
+	builderDef, err := builder.NewDefinitionFromLocation(buildConf.Builder.Name, buildConf.Builder.Location)
 	if err != nil {
 		return err
 	}
@@ -109,25 +93,23 @@ func buildStageGeneric(opts buildCommandOptions, stages []string, buildConf conf
 		return err
 	}
 
-	b := builder.NewBuild(engineCli, executor.New(), buildConf, builderDef, opts.dryRun, opts.cacheImagePull, opts.cacheImagePush, opts.targetImage, buildContext)
-	orderedStages, err := b.GetStageBuildOrder(stages)
+	buildOpts := builder.BuildOptions{
+		CacheImagePull: opts.cacheImagePull,
+		CacheImagePush: opts.cacheImagePush,
+		DryRun:         opts.dryRun,
+	}
+	b := builder.NewBuild(engineCli, executor.New(), builderDef, buildConf, buildOpts, opts.targetImage, buildContext)
+	buildSummaries, err := b.BuildStages(stages)
 	if err != nil {
 		return err
 	}
 
-	log.Infof("The stages will be build in the following order: %s\n", strings.Join(orderedStages, ", "))
 	imageURLs := []string{}
-	for _, stage := range orderedStages {
-		// Build stage
-		buildStatus, err := b.BuildStage(stage)
-		if err != nil {
-			return err
-		}
-
+	for _, buildSummary := range buildSummaries {
 		// Add extra tags
-		if buildStatus.Built {
-			for _, j := range opts.extraTags[stage] {
-				err = engineCli.Tag(buildStatus.ImageURL, opts.targetImage+":"+j)
+		if buildSummary.Status() == builder.ImageBuilt || buildSummary.Status() == builder.ImagePulled {
+			for _, j := range opts.extraTags[buildSummary.Name()] {
+				err = engineCli.Tag(buildSummary.ImageURL(), opts.targetImage+":"+j)
 				if err != nil {
 					return err
 				}
@@ -135,14 +117,14 @@ func buildStageGeneric(opts buildCommandOptions, stages []string, buildConf conf
 		}
 
 		// Compute image URLs to display in the summary
-		if len(opts.extraTags[stage]) > 0 {
-			imageURLs = append(imageURLs, fmt.Sprintf("%s [built:%v] (extra tag: %s)", buildStatus.ImageURL, buildStatus.Built, strings.Join(opts.extraTags[stage], ", ")))
+		if len(opts.extraTags[buildSummary.Name()]) > 0 {
+			imageURLs = append(imageURLs, fmt.Sprintf("%s [status:%v] (extra tag: %s)", buildSummary.ImageURL(), buildSummary.Status(), strings.Join(opts.extraTags[buildSummary.Name()], ", ")))
 		} else {
-			imageURLs = append(imageURLs, fmt.Sprintf("%s [built:%v]", buildStatus.ImageURL, buildStatus.Built))
+			imageURLs = append(imageURLs, fmt.Sprintf("%s [status:%v]", buildSummary.ImageURL(), buildSummary.Status()))
 		}
 	}
 
-	log.Info("Build finished! The following images have been pulled or built:")
+	log.Info("Build finished! The following images came into play:")
 	for _, image := range imageURLs {
 		log.Infof("* %s\n", image)
 	}
@@ -157,4 +139,19 @@ func generatedTargetName() string {
 	}
 
 	return fmt.Sprintf("generated-%s", filepath.Base(dir))
+}
+
+func parseExtraTagArray(extraTagArray []string) (map[string][]string, error) {
+	extraTags := map[string][]string{}
+	for _, v := range extraTagArray {
+		parts := strings.Split(v, "=")
+		if len(parts) < 2 {
+			return extraTags, fmt.Errorf("Invalid extra tag format")
+		}
+		if extraTags[parts[0]] == nil {
+			extraTags[parts[0]] = []string{}
+		}
+		extraTags[parts[0]] = append(extraTags[parts[0]], parts[1])
+	}
+	return extraTags, nil
 }

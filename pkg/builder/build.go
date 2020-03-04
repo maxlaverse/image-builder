@@ -2,216 +2,278 @@ package builder
 
 import (
 	"fmt"
-	"io/ioutil"
-	"os"
-	"path"
-	"strings"
+	"sync"
 
 	"github.com/maxlaverse/image-builder/pkg/config"
 	"github.com/maxlaverse/image-builder/pkg/engine"
 	"github.com/maxlaverse/image-builder/pkg/executor"
-	"github.com/maxlaverse/image-builder/pkg/fileutils"
 	"github.com/maxlaverse/image-builder/pkg/registry"
 	"github.com/maxlaverse/image-builder/pkg/template"
 	log "github.com/sirupsen/logrus"
 )
 
-// Build transform BuildConfigurations into Docker images
-type Build struct {
-	engine         engine.BuildEngine
-	buildDef       Definition
-	exec           executor.Executor
-	images         map[string]string
-	dryRun         bool
-	localContext   string
-	cacheImagePull bool
-	cacheImagePush bool
-	targetImage    string
-	buildConf      config.BuildConfiguration
+// BuildOptions holds the options for a build
+type BuildOptions struct {
+	// Check for already build images
+	CacheImagePull bool
+
+	// Push built stages for reuse
+	CacheImagePush bool
+
+	// DryRun disables any actual image build
+	DryRun bool
 }
 
-// BuildStatus represent the status of an image built
-type BuildStatus struct {
-	ImageURL string
-	Built    bool
+// Build transform BuildConfigurations into Docker images
+type Build struct {
+	buildConf    config.BuildConfiguration
+	buildDef     Definition
+	buildStages  sync.Map
+	engine       engine.BuildEngine
+	exec         executor.Executor
+	localContext string
+	opts         BuildOptions
+	targetImage  string
 }
 
 // NewBuild returns a new instance of Build
-func NewBuild(e engine.BuildEngine, exec executor.Executor, buildConf config.BuildConfiguration, buildDef Definition, dryRun, cacheImagePull, cacheImagePush bool, targetImage string, localContext string) *Build {
+func NewBuild(e engine.BuildEngine, exec executor.Executor, buildDef Definition, buildConf config.BuildConfiguration, opts BuildOptions, targetImage string, localContext string) *Build {
 	return &Build{
-		engine:         e,
-		buildDef:       buildDef,
-		images:         map[string]string{},
-		dryRun:         dryRun,
-		localContext:   localContext,
-		cacheImagePush: cacheImagePush,
-		cacheImagePull: cacheImagePull,
-		targetImage:    targetImage,
-		buildConf:      buildConf,
-		exec:           exec,
+		buildConf:    buildConf,
+		buildDef:     buildDef,
+		buildStages:  sync.Map{},
+		engine:       e,
+		exec:         exec,
+		localContext: localContext,
+		opts:         opts,
+		targetImage:  targetImage,
 	}
 }
 
-// GetStageBuildOrder returns in which order the stages should be build
-func (b *Build) GetStageBuildOrder(stages []string) ([]string, error) {
-	stageGraph := NewGraph()
-	for _, stage := range b.buildDef.GetStages() {
-		builderPath := b.buildDef.GetStagePath(stage)
-		data := template.NewMinimalBuildData(b.buildConf, b.localContext)
-		dockerfile, err := template.RenderDockerfile(path.Join(builderPath, "Dockerfile"), data, b.exec)
+// PrepareStages builds a set of stages
+func (b *Build) PrepareStages(stageNames []string) ([]BuildStage, error) {
+	log.Infof("Rendering Dockerfiles")
+	for _, stageName := range stageNames {
+		stage, err := b.prepareStage(stageName)
 		if err != nil {
-			log.Errorf("Could not render the Dockerfile: %v", err)
 			return nil, err
 		}
-
-		stageGraph.AddNode(stage, dockerfile.GetRequiredStages()...)
+		b.buildStages.Store(stageName, stage)
 	}
 
-	return stageGraph.ResolveUpTo(stages)
+	var err error
+	b.buildStages.Range(func(stageName, stage interface{}) bool {
+		log.Debugf("Final rendering of template '%s' to resolve stage references", stageName)
+		if err = stage.(BuildStage).Render(); err != nil {
+			return false
+		}
+		log.Tracef("Dockerfile for stage '%s' is:\n%s", stageName, stage.(BuildStage).Dockerfile())
+		return true
+	})
+	return b.getBuildStages(), err
 }
 
-// BuildStage pulls or build an image and push it
-func (b *Build) BuildStage(stage string) (BuildStatus, error) {
-	log.Debugf("Building stage '%s'", stage)
-	buildStatus, err := b.pullOrBuildStage(b.targetImage, stage)
+// BuildStages builds a set of stages
+func (b *Build) BuildStages(stageNames []string) ([]BuildStage, error) {
+	_, err := b.PrepareStages(stageNames)
 	if err != nil {
-		log.Debugf("Unable to pull or build stage '%s': %v", stage, err)
-		return buildStatus, err
+		return nil, fmt.Errorf("error while preparing some stages: %w", err)
 	}
-	b.images[stage] = buildStatus.ImageURL
-	return buildStatus, nil
+
+	if b.opts.DryRun {
+		return b.getBuildStages(), nil
+	}
+
+	log.Infof("Starting build")
+	for _, stageName := range stageNames {
+		stage, ok := b.buildStages.Load(stageName)
+		if !ok {
+			return nil, fmt.Errorf("stage '%s' was not prepared", stageName)
+		}
+
+		err := b.buildStage(stage.(BuildStage))
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return b.getBuildStages(), nil
 }
 
-// pullOrBuildStage lookup the builder cache for an already existing image for the given content and build it otherwise
-func (b *Build) pullOrBuildStage(dockerImage, stage string) (BuildStatus, error) {
-	builderPath := b.buildDef.GetStagePath(stage)
-	data := template.NewBuildData(b.buildConf, b.localContext, b.images)
-	dockerfile, err := template.RenderDockerfile(path.Join(builderPath, "Dockerfile"), data, b.exec)
+// templateStageResolver is called by the renderer to replace a stage
+// reference with its imageURL. It's used to recursively prepare stages
+func (b *Build) templateStageResolver(stageName string) (string, error) {
+	stage, err := b.prepareStage(stageName)
 	if err != nil {
-		return BuildStatus{}, err
+		return "error-while-resoving-stage", err
+	}
+	b.buildStages.Store(stageName, stage)
+	return stage.ImageURL(), nil
+}
+
+// prepareStage renders all the required Dockerfiles and verifies image some
+// stages can be pulled from remote registries
+func (b *Build) prepareStage(stageName string) (BuildStage, error) {
+	v, ok := b.buildStages.Load(stageName)
+	if ok {
+		if v.(BuildStage).Status() == Initialized {
+			return v.(BuildStage), fmt.Errorf("stage '%s' is already being built - possible loop in the stage dependencies", stageName)
+		}
+		return v.(BuildStage), nil
 	}
 
-	if b.dryRun {
-		log.Infof("Generated Dockerfile:\n%s", dockerfile.GetContent())
-	}
-
-	dockerfilePath, err := writeDockerFile(dockerfile.GetContent())
+	dockerfile, err := template.NewDockerfileFromFile(b.buildDef.GetStageDockerfile(stageName), b.buildConf, b.localContext, b.buildDef.GetStageDirectory(stageName), b.templateStageResolver, b.exec)
 	if err != nil {
-		return BuildStatus{}, err
+		return nil, fmt.Errorf("failed to read the Dockerfile template: %w", err)
 	}
-	defer os.Remove(dockerfilePath)
 
-	var buildContext string
-	if dockerfile.UseBuilderContext() {
-		buildContext = builderPath
+	stage := NewBuildStage(stageName, dockerfile, b.buildConf.IgnorePatterns(stageName))
+	b.buildStages.Store(stageName, stage)
+
+	err = stage.Render()
+	if err != nil {
+		return stage, err
+	}
+
+	tag, err := stage.ImageTag()
+	if err != nil {
+		return stage, err
+	}
+
+	// TODO: Normalize Docker URL
+	stage.SetImageURL(b.targetImage + ":" + stageName + "-" + tag)
+	stage.SetSourceImageURL(b.targetImage + ":" + stageName + "-" + tag)
+	if b.opts.CacheImagePull && b.buildConf.IsBuilderCacheSet() {
+		cachedDockerImageWithTag := b.buildConf.Builder.ImageCache + "/" + b.buildConf.Builder.Name + ":" + stageName + "-" + tag
+		exists, err := registry.ImageExists(cachedDockerImageWithTag)
+		if err != nil {
+			return stage, fmt.Errorf("error while verifying if image '%s' exists: %w", cachedDockerImageWithTag, err)
+		}
+
+		if exists {
+			stage.SetStatus(ImageCached)
+			stage.SetSourceImageURL(cachedDockerImageWithTag)
+			return stage, nil
+		}
+	}
+
+	if b.opts.CacheImagePull {
+		exists, err := registry.ImageExists(stage.ImageURL())
+		if err != nil {
+			return stage, fmt.Errorf("error while verifying if image '%s' exists: %w", stage.ImageURL(), err)
+		}
+
+		if exists {
+			stage.SetStatus(ImageCached)
+			return stage, nil
+		}
+	}
+
+	log.Debugf("No existing image for stage '%s' was found!", stageName)
+	stage.SetStatus(ImageAbsent)
+	return stage, nil
+}
+
+// buildStage builds a specific stage
+func (b *Build) buildStage(stage BuildStage) error {
+	// Log and exit of the nothing need to be done
+	if stage.Status() == ImageCached {
+		log.Infof("Image for stage '%s' (hash: '%s') is cached", stage.Name(), stage.ContentHash())
+		return nil
+	} else if stage.Status() == ImagePulled {
+		log.Infof("Image for stage '%s' (hash: '%s') has been pulled", stage.Name(), stage.ContentHash())
+		return nil
+	} else if stage.Status() == ImageBuilt {
+		log.Infof("Image for stage '%s' (hash: '%s') was built", stage.Name(), stage.ContentHash())
+		return nil
+	} else if stage.Status() != ImageAbsent {
+		return fmt.Errorf("image for stage '%s' (hash: '%s') has an invalid status: %v", stage.Name(), stage.ContentHash(), stage.Status())
+	}
+
+	log.Infof("Image for stage '%s' (hash: '%s') needs to be build", stage.Name(), stage.ContentHash())
+	requiredStages := stage.GetRequiredStages()
+	if len(requiredStages) > 0 {
+		log.Debugf("Stage '%s' requires: %v", stage.Name(), stage.GetRequiredStages())
 	} else {
-		buildContext = b.localContext
+		log.Debugf("Stage '%s' doesn't depend on any other stage", stage.Name())
 	}
 
-	dockerignorePath := path.Join(buildContext, ".dockerignore")
-	err = writeDockerIgnore(dockerignorePath, b.getFilesToIgnore(dockerfile, stage))
-	if err != nil {
-		return BuildStatus{}, err
-	}
-	defer os.Remove(dockerignorePath)
+	// Build dependencies
+	for _, s := range requiredStages {
+		stageDep, ok := b.buildStages.Load(s)
+		if !ok {
+			return fmt.Errorf("stage '%s' dependency of '%s' was not prepared", s, stage.Name())
+		}
 
-	tag, err := b.computeImageTag(dockerfile, buildContext, stage)
-	if err != nil {
-		log.Errorf("Error while computing the tag for the image: %v", err)
-		return BuildStatus{}, err
+		if err := b.ensureDependencyPresence(stageDep.(BuildStage)); err != nil {
+			return fmt.Errorf("error while ensuring presence of image for stage '%s' dependency of stage '%s': %w", stageDep.(BuildStage).Name(), stage.Name(), err)
+		}
 	}
 
-	var dockerImageWithTag string
-	if b.cacheImagePull && b.buildConf.IsBuilderCacheSet() {
-		// Try to pull a pre build image
-		dockerImageWithTag = b.buildConf.Builder.ImageCache + "/" + b.buildConf.Builder.Name + ":" + stage + "-" + tag
-		exists, err := registry.ImageExists(dockerImageWithTag)
+	// Build image
+	log.Infof("Building stage '%s'", stage.Name())
+	if err := stage.Build(b.engine); err != nil {
+		return fmt.Errorf("error while building stage '%s': %w", stage.Name(), err)
+	}
+
+	// Eventually push the image
+	stage.SetStatus(ImageBuilt)
+	log.Infof("Stage '%s' successfully built!", stage.Name())
+	if b.opts.CacheImagePush {
+		if err := b.pushStage(stage); err != nil {
+			return fmt.Errorf("error while pusing image for stage '%s': %w", stage.Name(), err)
+		}
+	}
+	return nil
+}
+
+// ensureDependencyPresence pull the dependencies for a Stage and retags them to match the expected name
+// or build them
+func (b *Build) ensureDependencyPresence(stage BuildStage) error {
+	if stage.Status() == ImageAbsent {
+		//TODO: Parallelize
+		err := b.buildStage(stage)
 		if err != nil {
-			log.Errorf("Error while computing the tag for the image: %v", err)
-			return BuildStatus{}, err
+			return fmt.Errorf("error while building dependency '%s' required for stage '%s': %w", stage.SourceImageURL(), stage.Name(), err)
 		}
-
-		if exists {
-			log.Infof("An image for '%s' was found in the builder's cache", dockerImageWithTag)
-			return BuildStatus{ImageURL: dockerImageWithTag, Built: false}, nil
-		}
-		log.Debugf("No image found for '%s' in the Builder's cache", dockerImageWithTag)
-	}
-
-	// Try to pull a cached image
-	//TODO: Normalize Docker URL
-	dockerImageWithTag = dockerImage + ":" + stage + "-" + tag
-	if b.cacheImagePull {
-		exists, err := registry.ImageExists(dockerImageWithTag)
+		return nil
+	} else if stage.Status() == ImageCached {
+		err := b.engine.Pull(stage.SourceImageURL())
 		if err != nil {
-			log.Errorf("Error while computing the tag for the image: %v", err)
-			return BuildStatus{}, err
+			return fmt.Errorf("error while pulling image '%s' required for stage '%s': %w", stage.SourceImageURL(), stage.Name(), err)
 		}
-		if exists {
-			log.Debugf("An image for '%s' was found in the application's cache", dockerImageWithTag)
-			return BuildStatus{ImageURL: dockerImageWithTag, Built: false}, nil
-		}
-	}
 
-	if b.dryRun {
-		log.Infof("Skipping build of '%s' because of dry run", dockerImageWithTag)
-		return BuildStatus{ImageURL: dockerImageWithTag, Built: false}, nil
-	}
-
-	log.Infof("A new image needs to be built for '%s'", dockerImageWithTag)
-	err = b.engine.Build(dockerfilePath, dockerImageWithTag, buildContext)
-	if err != nil {
-		log.Errorf("The image build failed for '%s'", dockerImageWithTag)
-		return BuildStatus{}, err
-	}
-
-	if b.cacheImagePush {
-		log.Infof("Pushing image '%s'", dockerImageWithTag)
-		err := b.engine.Push(dockerImageWithTag)
+		err = b.engine.Tag(stage.SourceImageURL(), stage.ImageURL())
 		if err != nil {
-			return BuildStatus{}, err
+			return fmt.Errorf("error while tagging image '%s' required for stage '%s': %w", stage.SourceImageURL(), stage.Name(), err)
 		}
-		for _, t := range dockerfile.GetTagAliases() {
-			log.Infof("Tagging image '%s' as '%s'", dockerImageWithTag, t)
-			err := registry.TagImage(dockerImageWithTag, t)
-			if err != nil {
-				return BuildStatus{}, err
-			}
+		stage.SetStatus(ImagePulled)
+	}
+	return nil
+}
+
+// pushStage push stages
+func (b *Build) pushStage(stage BuildStage) error {
+	log.Infof("Pushing image '%s'", stage.(BuildStage).ImageURL())
+	if err := b.engine.Push(stage.(BuildStage).ImageURL()); err != nil {
+		return fmt.Errorf("error while pushing image for stage '%s': %w", stage.Name(), err)
+	}
+
+	for _, tag := range stage.GetTagAliases() {
+		log.Infof("Tagging image '%s' as '%s'", stage.ImageURL(), tag)
+		if err := registry.TagImage(stage.ImageURL(), tag); err != nil {
+			return fmt.Errorf("error while tagging image for stage '%s' with '%s': %w", stage.Name(), tag, err)
 		}
 	}
-
-	return BuildStatus{ImageURL: dockerImageWithTag, Built: true}, nil
+	return nil
 }
 
-func (b *Build) getFilesToIgnore(dockerfile template.Dockerfile, stage string) []string {
-	res := append(dockerfile.GetDockerIgnores(), b.buildConf.DockerignoreForStage(stage)...)
-	res = append(res, ".dockerignore", "build.yaml")
-	return res
-}
-
-func (b *Build) computeImageTag(dockerfile template.Dockerfile, context string, stage string) (string, error) {
-	hash, err := fileutils.ContentHashing(dockerfile.GetContentWithoutIgnoredLines(), context, b.getFilesToIgnore(dockerfile, stage))
-	if err != nil {
-		log.Errorf("Error while computing content hashing")
-		return "", err
-	}
-	if len(dockerfile.GetFriendlyTag()) > 0 {
-		return fmt.Sprintf("%s-%s", dockerfile.GetFriendlyTag(), hash), nil
-	}
-	return hash, nil
-}
-
-func writeDockerFile(dockerfile string) (string, error) {
-	f, err := ioutil.TempFile("", "Dockerfile")
-	if err != nil {
-		return "", err
-	}
-	defer f.Close()
-	_, err = f.WriteString(dockerfile)
-	return f.Name(), err
-}
-
-func writeDockerIgnore(dockerfilePath string, filesToIgnore []string) error {
-	dockerIgnoreContent := strings.Join(filesToIgnore, "\n") + "\n"
-	return ioutil.WriteFile(dockerfilePath, []byte(dockerIgnoreContent), 0644)
+// getBuildStages returns in which order the stages should be build
+func (b *Build) getBuildStages() []BuildStage {
+	stages := []BuildStage{}
+	b.buildStages.Range(func(key, value interface{}) bool {
+		stages = append(stages, value.(BuildStage))
+		return true
+	})
+	return stages
 }

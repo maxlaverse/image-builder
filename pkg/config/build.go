@@ -12,6 +12,7 @@ type BuildConfiguration struct {
 	Builder   BuildBuilderConfiguration         `yaml:"builder"`
 	ImageSpec map[string]interface{}            `yaml:"imageSpec"`
 	StageSpec map[string]map[string]interface{} `yaml:"stageSpec"`
+	path      string
 }
 
 // BuildBuilderConfiguration represents the settings for the Builder to use
@@ -34,6 +35,7 @@ func ReadBuildConfiguration(filepath string) (BuildConfiguration, error) {
 	if err != nil {
 		return conf, err
 	}
+	conf.path = filepath
 	conf.normalize()
 	return conf, nil
 }
@@ -43,8 +45,8 @@ func (c *BuildConfiguration) IsBuilderCacheSet() bool {
 	return len(c.Builder.ImageCache) > 0
 }
 
-// DockerignoreForStage returns the Dockerfiles to ignore
-func (c *BuildConfiguration) DockerignoreForStage(stageName string) []string {
+// IgnorePatterns returns the Dockerfiles to ignore
+func (c *BuildConfiguration) IgnorePatterns(stageName string) []string {
 	result := []string{}
 	if v, ok := c.ImageSpec["dockerIgnores"]; ok {
 		for _, v3 := range v.([]interface{}) {
@@ -58,6 +60,7 @@ func (c *BuildConfiguration) DockerignoreForStage(stageName string) []string {
 			}
 		}
 	}
+	result = append(result, c.path)
 	return result
 }
 

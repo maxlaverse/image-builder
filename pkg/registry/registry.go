@@ -56,6 +56,7 @@ func TagImage(source, dest string) error {
 func ImageExists(ref string) (bool, error) {
 	_, err := getManifest(ref)
 	if err != nil {
+		// TODO: Fix this
 		return false, nil
 	}
 	return true, nil

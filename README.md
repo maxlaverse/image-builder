@@ -196,17 +196,14 @@ $ image-builder build .
 First `image-builder` ensures that you have the latest version of the Builder definitions. If the location
 is a Git repository, `image-builder` will either clone it or pull it.
 
-It then verifies that the content of the Builder is valid and renders the `Dockerfile` for each available stage in
-order to build a dependency graph. For each stage, it computes a Content Hash of the current context and then tries to
+It then verifies that the content of the Builder is valid and renders the `Dockerfile` for each available stage.
+When a stage depends on another stage, it computes the content hash of this dependency and tries to
 find an image with the expected tag on the Builder image registry first (if `builderCache` has been specific in the Build
 Configuration). If it can't be found, a second try is done on the application's image registry. Ultimately, the image
 for the stage is either pulled or built. When a stage needs to be built, `image-builder` pushes the resulting image to
 the application's image registry.
 
 ## TODOs
-
-### CLI
-* Verify the push decision is alright
 * Remove all the TODOs
 * Mention origin of `import "github.com/docker/docker/pkg/fileutils"`
 * Command to prune cache for an app, to prune baseLayers, manually
@@ -215,10 +212,6 @@ the application's image registry.
 * Specify default image in build.yaml ?
 * Add tests
 * Flag in `prebuilt.yaml` to delete an image from registry  ?
-
-### Builders
-* Add LABELs in pre-build images ?
-* Expiration labels for certain stages ? As variable of preBuilt ?
 
 [dockerfile-copy]: https://docs.docker.com/engine/reference/builder/#copy
 [docker-website]: https://docs.docker.com/

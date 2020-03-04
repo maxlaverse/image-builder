@@ -1,0 +1,1 @@
+FROM {{BuilderStage "1"}}
