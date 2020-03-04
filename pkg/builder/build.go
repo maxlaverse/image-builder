@@ -2,6 +2,7 @@ package builder
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/maxlaverse/image-builder/pkg/config"
@@ -67,7 +68,8 @@ func (b *Build) PrepareStages(stageNames []string) ([]BuildStage, error) {
 		if err = stage.(BuildStage).Render(); err != nil {
 			return false
 		}
-		log.Tracef("Dockerfile for stage '%s' is:\n%s", stageName, stage.(BuildStage).Dockerfile())
+		log.Debugf(".dockerignore for stage '%s' is:\n%s", stageName, strings.Join(stage.(BuildStage).Dockerignore(), "\n"))
+		log.Debugf("Dockerfile for stage '%s' is:\n%s", stageName, stage.(BuildStage).Dockerfile())
 		return true
 	})
 	return b.getBuildStages(), err

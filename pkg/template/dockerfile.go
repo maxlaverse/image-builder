@@ -62,24 +62,18 @@ func NewDockerfile(content []byte, buildConf config.BuildConfiguration, currentC
 		builderContext: builderContext,
 		content:        bytes.NewBuffer(content),
 		currentContext: currentContext,
+		data:           map[string][]string{},
 		templateData:   newTemplateData(buildConf, currentContext, resolver, exec),
 	}
 }
 
 // NewDockerfileFromFile renders a given Dockerfile based on provided BuildData
 func NewDockerfileFromFile(filepath string, buildConf config.BuildConfiguration, currentContext, builderContext string, resolver StageResolver, exec executor.Executor) (Dockerfile, error) {
-	// Load Dockerfile
 	content, err := ioutil.ReadFile(filepath)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to read the Dockerfile template: %v", err)
 	}
-
-	return &dockerfile{
-		builderContext: builderContext,
-		content:        bytes.NewBuffer(content),
-		currentContext: currentContext,
-		templateData:   newTemplateData(buildConf, currentContext, resolver, exec),
-	}, nil
+	return NewDockerfile(content, buildConf, currentContext, builderContext, resolver, exec), nil
 }
 
 func (d *dockerfile) Render() error {
@@ -95,8 +89,8 @@ func (d *dockerfile) Render() error {
 	}
 
 	d.content = newContent
-	if d.data == nil {
-		d.data = parseDirectives(d.content.Bytes())
+	if len(d.data) == 0 {
+		d.parseDirectives(d.content.Bytes())
 	}
 
 	if d.useBuilderContext() {
@@ -171,15 +165,13 @@ func (d *dockerfile) GetBuildContext() string {
 	return d.currentContext
 }
 
-func parseDirectives(content []byte) map[string][]string {
-	data := map[string][]string{}
+func (d *dockerfile) parseDirectives(content []byte) {
 	res := regExpDirectives.FindAllSubmatch(content, -1)
 	for _, line := range res {
 		name := string(line[1])
-		if _, ok := data[name]; !ok {
-			data[name] = []string{}
+		if _, ok := d.data[name]; !ok {
+			d.data[name] = []string{}
 		}
-		data[name] = append(data[name], string(line[2]))
+		d.data[name] = append(d.data[name], string(line[2]))
 	}
-	return data
 }

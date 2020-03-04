@@ -44,6 +44,7 @@ type BuildStage interface {
 	ComputeContentHash() error
 	ContentHash() string
 	Dockerfile() string
+	Dockerignore() []string
 	GetRequiredStages() []string
 	GetTagAliases() []string
 	ImageTag() (string, error)
@@ -71,7 +72,7 @@ type buildStage struct {
 // NewBuildStage returns a individual stage
 func NewBuildStage(name string, dockerfile template.Dockerfile, extraIgnorePatterns []string) BuildStage {
 	return &buildStage{
-		extraIgnorePatterns: append(append(extraIgnorePatterns, dockerIgnoreName), dockerfile.GetDockerIgnores()...),
+		extraIgnorePatterns: append(extraIgnorePatterns, dockerIgnoreName),
 		dockerfile:          dockerfile,
 		name:                name,
 		status:              Initialized,
@@ -100,7 +101,7 @@ func (b *buildStage) Build(engineBuild engine.BuildEngine) error {
 	defer os.Remove(dockerfilePath)
 
 	dockerignorePath := path.Join(b.dockerfile.GetBuildContext(), dockerIgnoreName)
-	err = writeDockerIgnore(dockerignorePath, b.extraIgnorePatterns)
+	err = writeDockerIgnore(dockerignorePath, b.Dockerignore())
 	if err != nil {
 		return fmt.Errorf("error writing '.dockerignore' file: %w", err)
 	}
@@ -128,6 +129,10 @@ func (b *buildStage) ContentHash() string {
 
 func (b *buildStage) Dockerfile() string {
 	return b.dockerfile.GetContent()
+}
+
+func (b *buildStage) Dockerignore() []string {
+	return append(b.extraIgnorePatterns, b.dockerfile.GetDockerIgnores()...)
 }
 
 func (b *buildStage) GetRequiredStages() []string {
