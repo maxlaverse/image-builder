@@ -1,16 +1,19 @@
 package builder
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"sync"
 
+	"github.com/BurntSushi/locker"
 	"github.com/maxlaverse/image-builder/pkg/config"
 	"github.com/maxlaverse/image-builder/pkg/engine"
 	"github.com/maxlaverse/image-builder/pkg/executor"
 	"github.com/maxlaverse/image-builder/pkg/registry"
 	"github.com/maxlaverse/image-builder/pkg/template"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/sync/errgroup"
 )
 
 // BuildOptions holds the options for a build
@@ -35,6 +38,7 @@ type Build struct {
 	localContext string
 	opts         BuildOptions
 	targetImage  string
+	locker       *locker.Locker
 }
 
 // NewBuild returns a new instance of Build
@@ -48,6 +52,7 @@ func NewBuild(e engine.BuildEngine, exec executor.Executor, buildDef Definition,
 		localContext: localContext,
 		opts:         opts,
 		targetImage:  targetImage,
+		locker:       locker.NewLocker(),
 	}
 }
 
@@ -87,16 +92,18 @@ func (b *Build) BuildStages(stageNames []string) ([]BuildStage, error) {
 	}
 
 	log.Infof("Starting build")
+	g, _ := errgroup.WithContext(context.Background())
 	for _, stageName := range stageNames {
 		stage, ok := b.buildStages.Load(stageName)
 		if !ok {
 			return nil, fmt.Errorf("stage '%s' was not prepared", stageName)
 		}
 
-		err := b.buildStage(stage.(BuildStage))
-		if err != nil {
-			return nil, err
-		}
+		g.Go(func() error { return b.buildStage(stage.(BuildStage)) })
+	}
+
+	if err := g.Wait(); err != nil {
+		return b.getBuildStages(), err
 	}
 
 	return b.getBuildStages(), nil
@@ -178,6 +185,11 @@ func (b *Build) prepareStage(stageName string) (BuildStage, error) {
 
 // buildStage builds a specific stage
 func (b *Build) buildStage(stage BuildStage) error {
+	log.Infof("Waiting for lock on '%s'", stage.Name())
+	b.locker.Lock(stage.Name())
+	defer b.locker.Unlock(stage.Name())
+	log.Infof("Got lock on '%s'", stage.Name())
+
 	// Log and exit of the nothing need to be done
 	if stage.Status() == ImageCached {
 		log.Infof("Image for stage '%s' (hash: '%s') is cached", stage.Name(), stage.ContentHash())
@@ -189,6 +201,7 @@ func (b *Build) buildStage(stage BuildStage) error {
 		log.Infof("Image for stage '%s' (hash: '%s') was built", stage.Name(), stage.ContentHash())
 		return nil
 	} else if stage.Status() != ImageAbsent {
+		// e.g ImageInitialized
 		return fmt.Errorf("image for stage '%s' (hash: '%s') has an invalid status: %v", stage.Name(), stage.ContentHash(), stage.Status())
 	}
 
@@ -201,15 +214,23 @@ func (b *Build) buildStage(stage BuildStage) error {
 	}
 
 	// Build dependencies
+	g, _ := errgroup.WithContext(context.Background())
 	for _, s := range requiredStages {
 		stageDep, ok := b.buildStages.Load(s)
 		if !ok {
 			return fmt.Errorf("stage '%s' dependency of '%s' was not prepared", s, stage.Name())
 		}
+		g.Go(func() error {
+			log.Infof("Preparing build of stage '%s' as dependency of '%s'", stageDep.(BuildStage).Name(), stage.Name())
+			if err := b.ensureDependencyPresence(stageDep.(BuildStage)); err != nil {
+				return fmt.Errorf("error while ensuring presence of image for stage '%s' dependency of stage '%s': %w", stageDep.(BuildStage).Name(), stage.Name(), err)
+			}
+			return nil
+		})
+	}
 
-		if err := b.ensureDependencyPresence(stageDep.(BuildStage)); err != nil {
-			return fmt.Errorf("error while ensuring presence of image for stage '%s' dependency of stage '%s': %w", stageDep.(BuildStage).Name(), stage.Name(), err)
-		}
+	if err := g.Wait(); err != nil {
+		return err
 	}
 
 	// Build image
@@ -233,7 +254,6 @@ func (b *Build) buildStage(stage BuildStage) error {
 // or build them
 func (b *Build) ensureDependencyPresence(stage BuildStage) error {
 	if stage.Status() == ImageAbsent {
-		//TODO: Parallelize
 		err := b.buildStage(stage)
 		if err != nil {
 			return fmt.Errorf("error while building dependency '%s' required for stage '%s': %w", stage.SourceImageURL(), stage.Name(), err)
