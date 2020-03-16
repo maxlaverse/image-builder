@@ -14,6 +14,7 @@ import (
 	"github.com/maxlaverse/image-builder/pkg/template"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
+	"golang.org/x/sync/semaphore"
 )
 
 // BuildOptions holds the options for a build
@@ -26,6 +27,9 @@ type BuildOptions struct {
 
 	// DryRun disables any actual image build
 	DryRun bool
+
+	// BuildConcurrency indicates how many concurrent image build are allowed
+	BuildConcurrency int64
 }
 
 // Build transform BuildConfigurations into Docker images
@@ -39,10 +43,14 @@ type Build struct {
 	opts         BuildOptions
 	targetImage  string
 	locker       *locker.Locker
+	sem          *semaphore.Weighted
 }
 
 // NewBuild returns a new instance of Build
 func NewBuild(e engine.BuildEngine, exec executor.Executor, buildDef Definition, buildConf config.BuildConfiguration, opts BuildOptions, targetImage string, localContext string) *Build {
+	if opts.BuildConcurrency < 1 {
+		opts.BuildConcurrency = 1
+	}
 	return &Build{
 		buildConf:    buildConf,
 		buildDef:     buildDef,
@@ -53,6 +61,7 @@ func NewBuild(e engine.BuildEngine, exec executor.Executor, buildDef Definition,
 		opts:         opts,
 		targetImage:  targetImage,
 		locker:       locker.NewLocker(),
+		sem:          semaphore.NewWeighted(opts.BuildConcurrency),
 	}
 }
 
@@ -185,10 +194,13 @@ func (b *Build) prepareStage(stageName string) (BuildStage, error) {
 
 // buildStage builds a specific stage
 func (b *Build) buildStage(stage BuildStage) error {
-	log.Infof("Waiting for lock on '%s'", stage.Name())
+	log.Debugf("Trying to acquire lock on '%s'", stage.Name())
 	b.locker.Lock(stage.Name())
-	defer b.locker.Unlock(stage.Name())
-	log.Infof("Got lock on '%s'", stage.Name())
+	defer func() {
+		b.locker.Unlock(stage.Name())
+		log.Debugf("Releasing lock on '%s'", stage.Name())
+	}()
+	log.Debugf("Got lock on '%s'", stage.Name())
 
 	// Log and exit of the nothing need to be done
 	if stage.Status() == ImageCached {
@@ -234,8 +246,22 @@ func (b *Build) buildStage(stage BuildStage) error {
 	}
 
 	// Build image
-	log.Infof("Building stage '%s'", stage.Name())
-	if err := stage.Build(b.engine); err != nil {
+	log.Debugf("Trying to acquire concurrency semaphore for '%s'", stage.Name())
+	if err := b.sem.Acquire(context.Background(), 1); err != nil {
+		return err
+	}
+	log.Debugf("Acquired concurrency semaphore for '%s'", stage.Name())
+
+	err := func() error {
+		defer func() {
+			b.sem.Release(1)
+			log.Debugf("Releasing concurrency semaphore on '%s'", stage.Name())
+		}()
+
+		log.Infof("Building stage '%s'", stage.Name())
+		return stage.Build(b.engine)
+	}()
+	if err != nil {
 		return fmt.Errorf("error while building stage '%s': %w", stage.Name(), err)
 	}
 

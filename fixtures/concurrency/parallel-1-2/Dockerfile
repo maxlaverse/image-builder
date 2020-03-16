@@ -1,0 +1,1 @@
+FROM {{BuilderStage "parallel-1-1"}}

@@ -86,6 +86,7 @@ func (d *data) ExternalImage(imageURL string) string {
 
 // ImageAgeGeneration returns the age of an image
 func (d *data) ImageAgeGeneration(imageURL, generation string) float64 {
+	// TODO: Cache result of this call
 	age, err := registry.ImageAge(imageURL)
 	if err != nil {
 		log.Fatalf("Error when calling ImageAge('%s'): %w", imageURL, err)
