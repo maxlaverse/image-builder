@@ -33,8 +33,8 @@ func (cli *dockerCli) cmd(args ...string) error {
 	return err
 }
 
-func (cli *dockerCli) Build(dockerfile, image, context string) error {
-	return cli.cmd("build", "-f", dockerfile, "-t", image, context)
+func (cli *dockerCli) Build(dockerfile, image, dir string) error {
+	return cli.cmd("build", "-f", dockerfile, "-t", image, dir)
 }
 
 func (cli *dockerCli) Name() string {

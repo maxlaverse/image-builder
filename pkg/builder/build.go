@@ -30,6 +30,9 @@ type BuildOptions struct {
 
 	// BuildConcurrency indicates how many concurrent image build are allowed
 	BuildConcurrency int64
+
+	// PullConcurrency indicates how many concurrent image pull are allowed
+	PullConcurrency int64
 }
 
 // Build transform BuildConfigurations into Docker images
@@ -43,13 +46,17 @@ type Build struct {
 	opts         BuildOptions
 	targetImage  string
 	locker       *locker.Locker
-	sem          *semaphore.Weighted
+	semBuild     *semaphore.Weighted
+	semPull      *semaphore.Weighted
 }
 
 // NewBuild returns a new instance of Build
 func NewBuild(e engine.BuildEngine, exec executor.Executor, buildDef Definition, buildConf config.BuildConfiguration, opts BuildOptions, targetImage string, localContext string) *Build {
 	if opts.BuildConcurrency < 1 {
 		opts.BuildConcurrency = 1
+	}
+	if opts.PullConcurrency < 1 {
+		opts.PullConcurrency = 1
 	}
 	return &Build{
 		buildConf:    buildConf,
@@ -61,7 +68,8 @@ func NewBuild(e engine.BuildEngine, exec executor.Executor, buildDef Definition,
 		opts:         opts,
 		targetImage:  targetImage,
 		locker:       locker.NewLocker(),
-		sem:          semaphore.NewWeighted(opts.BuildConcurrency),
+		semBuild:     semaphore.NewWeighted(opts.BuildConcurrency),
+		semPull:      semaphore.NewWeighted(opts.PullConcurrency),
 	}
 }
 
@@ -246,22 +254,7 @@ func (b *Build) buildStage(stage BuildStage) error {
 	}
 
 	// Build image
-	log.Debugf("Trying to acquire concurrency semaphore for '%s'", stage.Name())
-	if err := b.sem.Acquire(context.Background(), 1); err != nil {
-		return err
-	}
-	log.Debugf("Acquired concurrency semaphore for '%s'", stage.Name())
-
-	err := func() error {
-		defer func() {
-			b.sem.Release(1)
-			log.Debugf("Releasing concurrency semaphore on '%s'", stage.Name())
-		}()
-
-		log.Infof("Building stage '%s'", stage.Name())
-		return stage.Build(b.engine)
-	}()
-	if err != nil {
+	if err := wrapWithSemaphore(b.semBuild, "build", stage.Name(), func() error { return stage.Build(b.engine) }); err != nil {
 		return fmt.Errorf("error while building stage '%s': %w", stage.Name(), err)
 	}
 
@@ -286,7 +279,7 @@ func (b *Build) ensureDependencyPresence(stage BuildStage) error {
 		}
 		return nil
 	} else if stage.Status() == ImageCached {
-		err := b.engine.Pull(stage.SourceImageURL())
+		err := wrapWithSemaphore(b.semPull, "pull", stage.Name(), func() error { return b.engine.Pull(stage.SourceImageURL()) })
 		if err != nil {
 			return fmt.Errorf("error while pulling image '%s' required for stage '%s': %w", stage.SourceImageURL(), stage.Name(), err)
 		}
@@ -324,4 +317,18 @@ func (b *Build) getBuildStages() []BuildStage {
 		return true
 	})
 	return stages
+}
+
+// wrapWithSemaphore wraps a call with a semaphore
+func wrapWithSemaphore(sem *semaphore.Weighted, name, instance string, f func() error) error {
+	log.Debugf("Trying to acquire semaphore for '%s' on '%s'", instance, name)
+	if err := sem.Acquire(context.Background(), 1); err != nil {
+		return err
+	}
+	log.Debugf("Acquired semaphore for '%s' on '%s'", instance, name)
+	defer func() {
+		sem.Release(1)
+		log.Debugf("Releasing semaphore for '%s' on '%s'", instance, name)
+	}()
+	return f()
 }
