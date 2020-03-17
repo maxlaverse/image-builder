@@ -14,7 +14,7 @@ func TestEmptyBuildStage(t *testing.T) {
 	fakeExecutor := executortest.New()
 	buildConf := config.BuildConfiguration{}
 	resolver := func(string) (string, error) { return "none", nil }
-	dockerfile := template.NewDockerfile([]byte{}, buildConf, "../../fixtures/empty", "../../fixtures/empty", resolver, fakeExecutor)
+	dockerfile := template.NewDockerfile([]byte{}, "empty", buildConf, "../../fixtures/empty", "../../fixtures/empty", resolver, fakeExecutor)
 
 	stage := NewBuildStage("empty", dockerfile, []string{})
 
@@ -28,7 +28,7 @@ func TestBuildStage(t *testing.T) {
 	fakeExecutor := executortest.New()
 	buildConf := config.BuildConfiguration{}
 	resolver := func(string) (string, error) { return "none", nil }
-	dockerfile := template.NewDockerfile([]byte{}, buildConf, "../../fixtures/empty", "../../fixtures/empty", resolver, fakeExecutor)
+	dockerfile := template.NewDockerfile([]byte{}, "empty", buildConf, "../../fixtures/empty", "../../fixtures/empty", resolver, fakeExecutor)
 
 	stage := NewBuildStage("empty", dockerfile, []string{})
 	stage.SetImageURL("final-image")

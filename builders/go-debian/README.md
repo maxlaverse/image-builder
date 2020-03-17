@@ -28,7 +28,7 @@ The builder consists only in two stages:
 builder:
   name: go-debian
   location: ssh://git@github.com:maxlaverse/image-builder
-imageSpec:
+globalSpec:
   osRelease: buster
   goVersion: "1.13"
   binary: ovh-exchange-backup

@@ -48,7 +48,7 @@ func buildStageBase(opts buildCommandOptions) error {
 				ImageCache: prebuildConf.BuilderCache,
 				Name:       conf.BuilderName,
 			},
-			ImageSpec: conf.Spec,
+			GlobalSpec: conf.Spec,
 		}
 
 		if len(conf.BuilderName) == 0 {

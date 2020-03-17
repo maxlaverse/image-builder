@@ -28,16 +28,18 @@ type data struct {
 	deps           map[string]struct{}
 	exec           executor.Executor
 	resolver       StageResolver
+	stageName      string
 }
 
 // newTemplateData returns a new instance of Data
-func newTemplateData(buildConf config.BuildConfiguration, currentContext string, resolver StageResolver, exec executor.Executor) data {
+func newTemplateData(buildConf config.BuildConfiguration, currentContext string, resolver StageResolver, exec executor.Executor, stageName string) data {
 	return data{
 		buildConf:      buildConf,
 		currentContext: currentContext,
 		resolver:       resolver,
 		exec:           exec,
 		deps:           map[string]struct{}{},
+		stageName:      stageName,
 	}
 }
 
@@ -119,19 +121,23 @@ func (d *data) GitCommitShort() string {
 	return utils.Chomp(out.String())
 }
 
-// MandatoryParameter returns a parameter from ImageSpec or fails
+// MandatoryParameter returns a parameter from GlobalSpec or fails
 func (d *data) MandatoryParameter(parameterName string) interface{} {
-	value, ok := d.buildConf.ImageSpec[parameterName]
+	value, ok := d.buildConf.GetSpecAttribute(d.stageName, parameterName)
 	if !ok {
-		log.Fatalf("Could not find mandatory parameter in: %v", d.buildConf.ImageSpec)
+		log.Fatalf("Could not find mandatory parameter in: %v", d.buildConf.GlobalSpec)
 	}
 	return value
 }
 
-// ParameterWithOptionalDefault returns a parameter from ImageSpec or a default value
+// ParameterWithOptionalDefault returns a parameter from GlobalSpec or a default value
 func (d *data) ParameterWithOptionalDefault(args ...string) interface{} {
-	if len(args[0]) > 0 && d.buildConf.ImageSpec[args[0]] != nil {
-		return d.buildConf.ImageSpec[args[0]]
+	if len(args[0]) == 0 {
+		return ""
+	}
+	value, ok := d.buildConf.GetSpecAttribute(d.stageName, args[0])
+	if ok {
+		return value
 	} else if len(args) > 1 {
 		return args[1]
 	}

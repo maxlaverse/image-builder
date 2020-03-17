@@ -33,7 +33,7 @@ The builder has 2 final stages that can be executed:
 builder:
   name: rails-debian
   location: ssh://git@github.com:maxlaverse/image-builder
-imageSpec:
+globalSpec:
   osRelease: buster
   buildPackages:
     - libsqlite3-dev

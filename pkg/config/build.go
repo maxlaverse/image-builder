@@ -9,10 +9,10 @@ import (
 
 // BuildConfiguration represents the build configuration of an application
 type BuildConfiguration struct {
-	Builder   BuildBuilderConfiguration         `yaml:"builder"`
-	ImageSpec map[string]interface{}            `yaml:"imageSpec"`
-	StageSpec map[string]map[string]interface{} `yaml:"stageSpec"`
-	path      string
+	Builder    BuildBuilderConfiguration         `yaml:"builder"`
+	GlobalSpec map[string]interface{}            `yaml:"globalSpec"`
+	StageSpec  map[string]map[string]interface{} `yaml:"stageSpec"`
+	path       string
 }
 
 // BuildBuilderConfiguration represents the settings for the Builder to use
@@ -48,7 +48,7 @@ func (c *BuildConfiguration) IsBuilderCacheSet() bool {
 // IgnorePatterns returns the Dockerfiles to ignore
 func (c *BuildConfiguration) IgnorePatterns(stageName string) []string {
 	result := []string{}
-	if v, ok := c.ImageSpec["dockerIgnores"]; ok {
+	if v, ok := c.GlobalSpec["dockerIgnores"]; ok {
 		for _, v3 := range v.([]interface{}) {
 			result = append(result, v3.(string))
 		}
@@ -62,6 +62,17 @@ func (c *BuildConfiguration) IgnorePatterns(stageName string) []string {
 	}
 	result = append(result, c.path)
 	return result
+}
+
+// GetSpecAttribute returns the Dockerfiles to ignore
+func (c *BuildConfiguration) GetSpecAttribute(stageName, attrName string) (interface{}, bool) {
+	if v, ok := c.StageSpec[stageName][attrName]; ok {
+		return v, true
+	}
+	if v, ok := c.GlobalSpec[attrName]; ok {
+		return v, true
+	}
+	return nil, false
 }
 
 func (c *BuildConfiguration) normalize() {

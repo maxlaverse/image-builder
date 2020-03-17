@@ -70,7 +70,7 @@ builder:
   cache: docker.io/maxlaverse
 
 # Additional settings for the Dockerfile generation
-imageSpec:
+globalSpec:
   osRelease: bionic
   passengerVersion: 6.0.22
   runtimePackages:

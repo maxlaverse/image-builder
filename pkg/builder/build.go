@@ -140,7 +140,7 @@ func (b *Build) prepareStage(stageName string) (BuildStage, error) {
 		return v.(BuildStage), nil
 	}
 
-	dockerfile, err := template.NewDockerfileFromFile(b.buildDef.GetStageDockerfile(stageName), b.buildConf, b.localContext, b.buildDef.GetStageDirectory(stageName), b.templateStageResolver, b.exec)
+	dockerfile, err := template.NewDockerfileFromFile(b.buildDef.GetStageDockerfile(stageName), stageName, b.buildConf, b.localContext, b.buildDef.GetStageDirectory(stageName), b.templateStageResolver, b.exec)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read the Dockerfile template: %w", err)
 	}

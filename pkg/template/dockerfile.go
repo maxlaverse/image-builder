@@ -21,7 +21,7 @@ const (
 
 	// dirContentHashIgnoreNextLine tells the content ahsing algorithm to ignore the
 	// next line
-	dirContentHashIgnoreNextLine = "ContentHashIgnoreNextLie"
+	dirContentHashIgnoreNextLine = "ContentHashIgnoreNextLine"
 
 	// dirDockerIgnore automatically excludes files from the Docker context
 	dirDockerIgnore = "DockerIgnore"
@@ -57,23 +57,23 @@ type Dockerfile interface {
 }
 
 // NewDockerfile renders a given Dockerfile based on provided BuildData
-func NewDockerfile(content []byte, buildConf config.BuildConfiguration, currentContext, builderContext string, resolver StageResolver, exec executor.Executor) Dockerfile {
+func NewDockerfile(content []byte, stageName string, buildConf config.BuildConfiguration, currentContext, builderContext string, resolver StageResolver, exec executor.Executor) Dockerfile {
 	return &dockerfile{
 		builderContext: builderContext,
 		content:        bytes.NewBuffer(content),
 		currentContext: currentContext,
 		data:           map[string][]string{},
-		templateData:   newTemplateData(buildConf, currentContext, resolver, exec),
+		templateData:   newTemplateData(buildConf, currentContext, resolver, exec, stageName),
 	}
 }
 
 // NewDockerfileFromFile renders a given Dockerfile based on provided BuildData
-func NewDockerfileFromFile(filepath string, buildConf config.BuildConfiguration, currentContext, builderContext string, resolver StageResolver, exec executor.Executor) (Dockerfile, error) {
+func NewDockerfileFromFile(filepath, stageName string, buildConf config.BuildConfiguration, currentContext, builderContext string, resolver StageResolver, exec executor.Executor) (Dockerfile, error) {
 	content, err := ioutil.ReadFile(filepath)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to read the Dockerfile template: %v", err)
 	}
-	return NewDockerfile(content, buildConf, currentContext, builderContext, resolver, exec), nil
+	return NewDockerfile(content, stageName, buildConf, currentContext, builderContext, resolver, exec), nil
 }
 
 func (d *dockerfile) Render() error {
