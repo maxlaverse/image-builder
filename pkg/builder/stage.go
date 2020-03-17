@@ -19,23 +19,23 @@ const (
 
 // StageImageStatus represents the status of the image corresponding to a
 // stage (e.g. absent, cached, pulled)
-type StageImageStatus int
+type StageImageStatus string
 
 const (
 	// Initialized is unknown
-	Initialized StageImageStatus = iota
+	Initialized StageImageStatus = "initialize"
 
 	// ImageAbsent is for images not present locally not remotely
-	ImageAbsent StageImageStatus = iota
+	ImageAbsent StageImageStatus = "absent"
 
 	// ImageCached is for images that are found in the Application or Builder's cache
-	ImageCached StageImageStatus = iota
+	ImageCached StageImageStatus = "present-in-cache"
 
 	// ImagePulled is for images that were absent but could be pulled
-	ImagePulled StageImageStatus = iota
+	ImagePulled StageImageStatus = "pulled"
 
 	// ImageBuilt is for images that have been built
-	ImageBuilt StageImageStatus = iota
+	ImageBuilt StageImageStatus = "built"
 )
 
 // BuildStage represents a individual stage which can be built
