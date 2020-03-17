@@ -11,6 +11,7 @@ import (
 	"github.com/maxlaverse/image-builder/pkg/config"
 	"github.com/maxlaverse/image-builder/pkg/engine"
 	"github.com/maxlaverse/image-builder/pkg/executor"
+	"github.com/maxlaverse/image-builder/pkg/registry"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -109,10 +110,14 @@ func buildStageGeneric(opts buildCommandOptions, stages []string, buildConf conf
 
 	imageURLs := []string{}
 	for _, buildSummary := range buildSummaries {
-		// Add extra tags
-		if buildSummary.Status() == builder.ImageBuilt || buildSummary.Status() == builder.ImagePulled {
-			for _, j := range opts.extraTags[buildSummary.Name()] {
+		for _, j := range opts.extraTags[buildSummary.Name()] {
+			if buildSummary.Status() == builder.ImageBuilt || buildSummary.Status() == builder.ImagePulled {
 				err = engineCli.Tag(buildSummary.ImageURL(), opts.targetImage+":"+j)
+				if err != nil {
+					return err
+				}
+			} else if buildSummary.Status() == builder.ImageCached {
+				err = registry.TagImage(buildSummary.ImageURL(), j)
 				if err != nil {
 					return err
 				}
