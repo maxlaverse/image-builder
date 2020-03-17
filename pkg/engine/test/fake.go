@@ -33,6 +33,13 @@ func (cli *fakeCli) Build(dockerfile, image, context string) error {
 	return nil
 }
 
+func (cli *fakeCli) Name() string {
+	cli.mux.Lock()
+	defer cli.mux.Unlock()
+	cli.MethodCalls = append(cli.MethodCalls, "Name")
+	return "fake"
+}
+
 func (cli *fakeCli) Push(image string) error {
 	cli.mux.Lock()
 	defer cli.mux.Unlock()
@@ -52,4 +59,11 @@ func (cli *fakeCli) Tag(src, dst string) error {
 	defer cli.mux.Unlock()
 	cli.MethodCalls = append(cli.MethodCalls, fmt.Sprintf("Tag(%s,%s)", src, dst))
 	return nil
+}
+
+func (cli *fakeCli) Version() (string, error) {
+	cli.mux.Lock()
+	defer cli.mux.Unlock()
+	cli.MethodCalls = append(cli.MethodCalls, "Version")
+	return "fake-version", nil
 }

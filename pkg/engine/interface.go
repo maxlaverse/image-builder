@@ -9,8 +9,10 @@ import (
 // BuildEngine abstract container builder
 type BuildEngine interface {
 	Build(dockerfile, image, context string) error
+	Name() string
 	Push(image string) error
 	Pull(image string) error
+	Version() (string, error)
 	Tag(src, dst string) error
 }
 

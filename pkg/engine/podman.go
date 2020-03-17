@@ -2,6 +2,7 @@ package engine
 
 import (
 	"bytes"
+	"strings"
 
 	"github.com/maxlaverse/image-builder/pkg/executor"
 	log "github.com/sirupsen/logrus"
@@ -36,6 +37,10 @@ func (cli *podmanCli) Build(dockerfile, image, context string) error {
 	return cli.cmd("build", "--format=docker", "--cgroup-manager", "cgroupfs", "-f", dockerfile, "-t", image, context)
 }
 
+func (cli *podmanCli) Name() string {
+	return "podman"
+}
+
 func (cli *podmanCli) Push(image string) error {
 	return cli.cmd("push", image)
 }
@@ -46,4 +51,14 @@ func (cli *podmanCli) Pull(image string) error {
 
 func (cli *podmanCli) Tag(src, dst string) error {
 	return cli.cmd("tag", src, dst)
+}
+
+func (cli *podmanCli) Version() (string, error) {
+	var out bytes.Buffer
+
+	err := cli.exec.NewCommand("podman", "version", "--format", "{{.Server.Version}}").WithCombinedOutput(&out).Run()
+	if err != nil {
+		log.Errorf("Command returned '%v': %s", err, out.String())
+	}
+	return strings.ReplaceAll(strings.TrimSpace(out.String()), "\"", ""), nil
 }

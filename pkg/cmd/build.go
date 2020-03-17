@@ -96,6 +96,12 @@ func buildStageGeneric(opts buildCommandOptions, stages []string, buildConf conf
 		return err
 	}
 
+	engineVersion, err := engineCli.Version()
+	if err != nil {
+		return err
+	}
+	log.Infof("Container Engine: %s (v%s)\n", engineCli.Name(), engineVersion)
+
 	buildOpts := builder.BuildOptions{
 		BuildConcurrency: opts.buildConcurrency,
 		CacheImagePull:   opts.cacheImagePull,
