@@ -93,7 +93,7 @@ func (b *buildStage) SetStatus(status StageImageStatus) {
 
 // Build writes a Dockerfile and .dockerignore and calls the engine's build command
 func (b *buildStage) Build(engineBuild engine.BuildEngine) error {
-	log.Infof("Build context is '%s'", b.dockerfile.GetBuildContext())
+	log.Infof("Build context for '%s' is '%s'", b.Name(), b.dockerfile.GetBuildContext())
 	dockerfilePath, err := writeDockerfile(b.dockerfile.GetContent())
 	if err != nil {
 		return fmt.Errorf("error writing 'Dockerfile' file: %w", err)
