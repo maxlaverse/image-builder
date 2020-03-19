@@ -22,7 +22,9 @@ func New(name string, exec executor.Executor) (BuildEngine, error) {
 		return newPodmanCli(exec), nil
 	} else if name == "docker" {
 		return newDockerCli(exec), nil
+	} else if name == "buildah" {
+		return newbuildahCli(exec), nil
 	} else {
-		return nil, fmt.Errorf("Unsupport engine")
+		return nil, fmt.Errorf("Unsupport engine: %s", name)
 	}
 }

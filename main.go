@@ -13,6 +13,7 @@ import (
 
 func main() {
 	conf := config.NewDefaultConfiguration()
+	conf.Load(getConfigurationPath())
 
 	verbose := 0
 	command := &cobra.Command{
@@ -22,7 +23,6 @@ func main() {
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			log.SetLevel(log.Level(math.Min(float64(verbose+4), 6.0)))
 			log.SetFormatter(&log.TextFormatter{})
-			conf.Load(getConfigurationPath())
 		},
 	}
 	command.PersistentFlags().IntVarP(&verbose, "verbose", "v", 0, "Be verbose on log output")

@@ -62,7 +62,7 @@ func NewBuildCmd(conf *config.CliConfiguration) *cobra.Command {
 	cmd.Flags().BoolVarP(&opts.dryRun, "dry-run", "", false, "Only display the generated Dockerfiles")
 	cmd.Flags().StringVarP(&opts.engine, "engine", "", conf.DefaultEngine, "Engine to use for building images")
 	cmd.Flags().StringVarP(&opts.targetImage, "target-image", "t", "", "Specifies the name which will be assigned to the resulting image if the build process completes successfully")
-	cmd.Flags().StringArrayVarP(&extraTagArray, "extra-tag", "", []string{}, "Extra tag if the stage was built (format: <stage>=<tag>")
+	cmd.Flags().StringArrayVarP(&extraTagArray, "extra-tag", "", []string{}, "Extra tag if the stage was built (format: <stage>=<tag>)")
 	cmd.Flags().StringArrayVarP(&opts.targetStages, "target-stages", "s", []string{"release"}, "Specifies the stages to build")
 
 	return cmd

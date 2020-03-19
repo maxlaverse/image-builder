@@ -9,7 +9,7 @@ templates used to generate  and build Container Images. A single Builder can use
 to build intermediary images and optimize caching. The final image(s) is put together by using a standard
 multi-stage build with the [`COPY --from` directive][dockerfile-copy].
 
-Only [Docker][docker-website] and [Podman][podman-website] are supported as Container Engine.
+Only [Docker][docker-website], [Podman][podman-website] and [Buildah][buildah-website] are supported as Container Engine.
 
 ----
 
@@ -216,5 +216,6 @@ the application's image registry.
 [dockerfile-copy]: https://docs.docker.com/engine/reference/builder/#copy
 [docker-website]: https://docs.docker.com/
 [podman-website]: https://podman.io/
+[buildah-website]: https://github.com/containers/buildah
 [builder-goapp]: builders/go-debian/README.md
 [builder-railsapp]: builders/rails-debian/README.md

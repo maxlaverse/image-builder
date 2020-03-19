@@ -2,6 +2,8 @@ package config
 
 import (
 	"io/ioutil"
+	"os"
+	"path"
 
 	"gopkg.in/yaml.v2"
 )
@@ -36,6 +38,12 @@ func (c *CliConfiguration) Save() error {
 	if err != nil {
 		return err
 	}
+
+	err = os.MkdirAll(path.Dir(c.filepath), os.ModePerm)
+	if err != nil {
+		return err
+	}
+
 	err = ioutil.WriteFile(c.filepath, bytes, 0700)
 	if err != nil {
 		return err
