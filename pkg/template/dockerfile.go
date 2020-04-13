@@ -23,8 +23,8 @@ const (
 	// next line
 	dirContentHashIgnoreNextLine = "ContentHashIgnoreNextLine"
 
-	// dirDockerIgnore automatically excludes files from the Docker context
-	dirDockerIgnore = "DockerIgnore"
+	// dirContextInclude includes files from the Docker context
+	dirContextInclude = "ContextInclude"
 
 	// dirUseBuilderContext changes the build context for the directory where the builder
 	// is defined
@@ -49,7 +49,7 @@ type Dockerfile interface {
 	GetBuildContext() string
 	GetContent() string
 	GetContentWithoutIgnoredLines() string
-	GetDockerIgnores() []string
+	GetContextIncludes() []string
 	GetFriendlyTag() string
 	GetTagAliases() []string
 	GetRequiredStages() []string
@@ -121,12 +121,12 @@ func (d *dockerfile) GetContentWithoutIgnoredLines() string {
 	return strings.Join(filteredLines, "\n")
 }
 
-// GetDockerIgnores returns the list of files to ignore when loading the build context
-func (d *dockerfile) GetDockerIgnores() []string {
-	if d.data[dirDockerIgnore] == nil {
+// GetContextIncludes returns the list of files to cinlude in the build context
+func (d *dockerfile) GetContextIncludes() []string {
+	if d.data[dirContextInclude] == nil {
 		return []string{}
 	}
-	return d.data[dirDockerIgnore]
+	return d.data[dirContextInclude]
 }
 
 // GetTagAliases returns the list of tag aliases

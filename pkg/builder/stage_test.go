@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestEmptyBuildStage(t *testing.T) {
+func TestEmptyBuildStageWithEmptyDockerfile(t *testing.T) {
 	fakeExecutor := executortest.New()
 	buildConf := config.BuildConfiguration{}
 	resolver := func(string) (string, error) { return "none", nil }
@@ -21,7 +21,21 @@ func TestEmptyBuildStage(t *testing.T) {
 	err := stage.ComputeContentHash()
 
 	assert.NoError(t, err)
-	assert.Equal(t, "4cc05c0e", stage.ContentHash())
+	assert.Equal(t, "00000000", stage.ContentHash())
+}
+
+func TestEmptyBuildStageWithDockerfile(t *testing.T) {
+	fakeExecutor := executortest.New()
+	buildConf := config.BuildConfiguration{}
+	resolver := func(string) (string, error) { return "none", nil }
+	dockerfile := template.NewDockerfile([]byte("something"), "empty", buildConf, "../../fixtures/empty", "../../fixtures/empty", resolver, fakeExecutor)
+
+	stage := NewBuildStage("empty", dockerfile, []string{})
+
+	err := stage.ComputeContentHash()
+
+	assert.NoError(t, err)
+	assert.Equal(t, "09da31fb", stage.ContentHash())
 }
 
 func TestBuildStage(t *testing.T) {

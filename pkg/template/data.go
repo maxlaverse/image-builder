@@ -79,7 +79,7 @@ func (d *data) BuilderStage(stageName string) string {
 func (d *data) ExternalImage(imageURL string) string {
 	digest, err := registry.ImageWithDigest(imageURL)
 	if err != nil {
-		log.Fatalf("Error when calling ImageWithDigest('%s'): %w", imageURL, err)
+		log.Fatalf("Error when calling ImageWithDigest('%s'): %v", imageURL, err)
 	}
 
 	log.Debugf("Replacing ExternalImage('%s') with '%s'", imageURL, digest)
@@ -91,11 +91,11 @@ func (d *data) ImageAgeGeneration(imageURL, generation string) float64 {
 	// TODO: Cache result of this call
 	age, err := registry.ImageAge(imageURL)
 	if err != nil {
-		log.Fatalf("Error when calling ImageAge('%s'): %w", imageURL, err)
+		log.Fatalf("Error when calling ImageAge('%s'): %v", imageURL, err)
 	}
 	b, err := time.ParseDuration(generation)
 	if err != nil {
-		log.Fatalf("Error when calling ParseDuration('%s'): %w", generation, err)
+		log.Fatalf("Error when calling ParseDuration('%s'): %v", generation, err)
 	}
 	return math.Floor(age.Seconds() / b.Seconds())
 }

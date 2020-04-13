@@ -1,4 +1,5 @@
 # UseBuilderContext
+# ContextInclude rootfs/**/*
 # FriendlyTag {{Parameter "osRelease"}}-ruby-{{File ".ruby-version"}}
 # TagAlias {{Parameter "osRelease"}}-ruby-{{File ".ruby-version"}}
 FROM {{ExternalImage (Concat "docker.io/library/debian:" (MandatoryParameter "osRelease"))}}

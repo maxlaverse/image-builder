@@ -97,7 +97,7 @@ func (b *Build) PrepareStages(stageNames []string) ([]BuildStage, error) {
 		if len(files) == 0 {
 			log.Debugf("The context for stage '%s' is empty", stageName)
 		} else {
-			log.Debugf("Files included in the context for stage '%s' are:", stageName)
+			log.Debugf("The context for stage '%s' contains:", stageName)
 			for _, f := range files {
 				log.Debugf("* %s", f)
 			}
@@ -164,7 +164,7 @@ func (b *Build) prepareStage(stageName string) (BuildStage, error) {
 		return nil, fmt.Errorf("failed to read the Dockerfile template: %w", err)
 	}
 
-	stage := NewBuildStage(stageName, dockerfile, b.buildConf.IgnorePatterns(stageName))
+	stage := NewBuildStage(stageName, dockerfile, b.buildConf.IncludePatterns(stageName))
 	b.buildStages.Store(stageName, stage)
 
 	err = stage.Render()

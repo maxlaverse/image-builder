@@ -1,5 +1,5 @@
-# DockerIgnore *
-# DockerIgnore !go.*
+# ContextInclude go.mod
+# ContextInclude go.sum
 FROM {{ExternalImage (Concat "docker.io/library/golang:" (Parameter "goVersion" "1.13"))}}
 WORKDIR /build
 {{if Parameter "goGetModules"}}

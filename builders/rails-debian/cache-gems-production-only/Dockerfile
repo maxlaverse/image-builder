@@ -1,5 +1,5 @@
-# DockerIgnore *
-# DockerIgnore !Gemfile*
+# ContextInclude Gemfile
+# ContextInclude Gemfile.lock
 FROM {{BuilderStage "cache-packages"}}
 ENV GEM_HOME=/gems
 RUN apt-get install -y build-essential {{if Parameter "buildPackages"}}{{range $val := (Parameter "buildPackages")}}{{$val}} {{end}}{{end}}

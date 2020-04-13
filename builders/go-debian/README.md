@@ -36,6 +36,6 @@ globalSpec:
   binary: ovh-exchange-backup
   runtimePackages:
   - ca-certificates
-  dockerIgnores:
-  - scripts/*
+  contextInclude:
+  - pkg
 ```

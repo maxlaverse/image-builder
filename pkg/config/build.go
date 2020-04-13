@@ -45,22 +45,22 @@ func (c *BuildConfiguration) IsBuilderCacheSet() bool {
 	return len(c.Builder.ImageCache) > 0
 }
 
-// IgnorePatterns returns the Dockerfiles to ignore
-func (c *BuildConfiguration) IgnorePatterns(stageName string) []string {
+// IncludePatterns returns the files to include in the Docker context
+func (c *BuildConfiguration) IncludePatterns(stageName string) []string {
 	result := []string{}
-	if v, ok := c.GlobalSpec["dockerIgnores"]; ok {
+	if v, ok := c.GlobalSpec["contextInclude"]; ok {
 		for _, v3 := range v.([]interface{}) {
 			result = append(result, v3.(string))
 		}
 	}
 	if v, ok := c.StageSpec[stageName]; ok {
-		if v2, ok := v["dockerIgnores"]; ok {
+		if v2, ok := v["contextInclude"]; ok {
 			for _, v3 := range v2.([]interface{}) {
 				result = append(result, v3.(string))
 			}
 		}
 	}
-	result = append(result, c.path)
+	//result = append(result, c.path)
 	return result
 }
 

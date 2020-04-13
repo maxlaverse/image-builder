@@ -59,16 +59,16 @@ func TestPrepareComplex(t *testing.T) {
 	if !assert.Len(t, stages, 5) {
 		t.Fail()
 	}
-	assert.Equal(t, []string{"1=add0b833", "2=b8734280", "3=f829d8c6", "4=9a7eedee", "5=9a7eedee"}, stagesToHashes(stages))
+	assert.Equal(t, []string{"1=55c0ab23", "2=cae4d907", "3=161aa95e", "4=c7e9afa3", "5=c7e9afa3"}, stagesToHashes(stages))
 }
 
 func TestBuildConcurrently(t *testing.T) {
 	fakeEngine := enginetest.NewWithCallbacks(delayInOrder(t, map[string]time.Duration{
-		"fake-target-image:final-1bb557c5":        0,
-		"fake-target-image:parallel-1-1-ebe68df7": time.Duration(0),
-		"fake-target-image:parallel-1-2-01123178": time.Duration(10) * time.Millisecond,
-		"fake-target-image:parallel-2-1-ebe68df7": time.Duration(5) * time.Millisecond,
-		"fake-target-image:parallel-2-2-768ce388": time.Duration(0),
+		"fake-target-image:final-6a965d86":        0,
+		"fake-target-image:parallel-1-1-306aefb8": time.Duration(0),
+		"fake-target-image:parallel-1-2-3d0ef7c4": time.Duration(10) * time.Millisecond,
+		"fake-target-image:parallel-2-1-306aefb8": time.Duration(5) * time.Millisecond,
+		"fake-target-image:parallel-2-2-4a902534": time.Duration(0),
 	}))
 	fakeExecutor := executortest.New()
 	builderDef := NewDefinitionFromPath("concurrency", "../../fixtures/concurrency")
@@ -82,10 +82,10 @@ func TestBuildConcurrently(t *testing.T) {
 			if !assert.Len(t, stages, 5) {
 				t.Fail()
 			}
-			assert.Equal(t, []string{"final=1bb557c5", "parallel-1-1=ebe68df7", "parallel-1-2=01123178", "parallel-2-1=ebe68df7", "parallel-2-2=768ce388"}, stagesToHashes(stages))
-			assert.Equal(t, "Build(fake-target-image:parallel-2-2-768ce388)", fakeEngine.MethodCalls[2])
-			assert.Equal(t, "Build(fake-target-image:parallel-1-2-01123178)", fakeEngine.MethodCalls[3])
-			assert.Equal(t, "Build(fake-target-image:final-1bb557c5)", fakeEngine.MethodCalls[4])
+			assert.Equal(t, []string{"final=6a965d86", "parallel-1-1=306aefb8", "parallel-1-2=3d0ef7c4", "parallel-2-1=306aefb8", "parallel-2-2=4a902534"}, stagesToHashes(stages))
+			assert.Equal(t, "Build(fake-target-image:parallel-2-2-4a902534)", fakeEngine.MethodCalls[2])
+			assert.Equal(t, "Build(fake-target-image:parallel-1-2-3d0ef7c4)", fakeEngine.MethodCalls[3])
+			assert.Equal(t, "Build(fake-target-image:final-6a965d86)", fakeEngine.MethodCalls[4])
 		})
 	}
 }

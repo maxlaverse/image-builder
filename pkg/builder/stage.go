@@ -60,22 +60,22 @@ type BuildStage interface {
 
 // buildStage represents a individual stage which can be built
 type buildStage struct {
-	extraIgnorePatterns []string
-	contentHash         string
-	dockerfile          template.Dockerfile
-	imageURL            string
-	name                string
-	sourceImageURL      string
-	status              StageImageStatus
+	extraIncludePatterns []string
+	contentHash          string
+	dockerfile           template.Dockerfile
+	imageURL             string
+	name                 string
+	sourceImageURL       string
+	status               StageImageStatus
 }
 
 // NewBuildStage returns a individual stage
-func NewBuildStage(name string, dockerfile template.Dockerfile, extraIgnorePatterns []string) BuildStage {
+func NewBuildStage(name string, dockerfile template.Dockerfile, extraIncludePatterns []string) BuildStage {
 	return &buildStage{
-		extraIgnorePatterns: append(extraIgnorePatterns, dockerIgnoreName),
-		dockerfile:          dockerfile,
-		name:                name,
-		status:              Initialized,
+		extraIncludePatterns: extraIncludePatterns,
+		dockerfile:           dockerfile,
+		name:                 name,
+		status:               Initialized,
 	}
 }
 
@@ -117,7 +117,7 @@ func (b *buildStage) Build(engineBuild engine.BuildEngine) error {
 }
 
 func (b *buildStage) ContextFiles() ([]string, error) {
-	contextFiles, err := fileutils.ListMatchingFiles(b.dockerfile.GetBuildContext(), append(b.extraIgnorePatterns, b.dockerfile.GetDockerIgnores()...))
+	contextFiles, err := fileutils.ListMatchingFiles(b.dockerfile.GetBuildContext(), append(b.extraIncludePatterns, b.dockerfile.GetContextIncludes()...))
 	if err != nil {
 		return contextFiles, fmt.Errorf("error listing files in context: %w", err)
 	}

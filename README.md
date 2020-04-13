@@ -142,7 +142,7 @@ play a role in cache invalidation. They have the form of `# Key` or `# Key Value
 
 | Name                    | Description                                                                      |
 |-------------------------|----------------------------------------------------------------------------------|
-| `DockerIgnore`          | Adds an item to the .dockerignore file that is generated during the build        |
+| `ContextInclude`        | Adds an item to the build context                                                |
 | `UseBuilderContext`     | Use the Builder's folder as build context instead of the application's folder. Required if the stage is embedding files from the Builder's folder.|
 | `FriendlyTag`           | Appends a friendly information to the tag (e.g os release, package version)      |
 | `TagAlias`              | Push the resulting image with extra tag (e.g: v2, v2.6, v2.6.5)                  |

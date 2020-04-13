@@ -1,4 +1,3 @@
-# DockerIgnore **/.git
 FROM {{BuilderStage "modules"}} AS builder
 COPY . .
 RUN {{Parameter "goBuildCmd" "go build"}}
