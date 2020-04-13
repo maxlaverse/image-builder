@@ -30,9 +30,8 @@ The builder has 2 final stages that can be executed:
 ## Example
 
 ```yaml
-builder:
-  name: rails-debian
-  location: ssh://git@github.com:maxlaverse/image-builder
+builderName: rails-debian
+builderLocation: ssh://git@github.com:maxlaverse/image-builder
 globalSpec:
   osRelease: buster
   buildPackages:
@@ -40,6 +39,19 @@ globalSpec:
   runtimePackages:
     - libsqlite3-0
     - nodejs
+releaseSpec:
+  contextInclude:
+  - "Gemfile.*"
+  - "Rakefile"
+  - "app/**"
+  - "config/**"
+  - "db/**"
+  - "lib/**"
+  - "public/**"
+  - "spec/**"
+  - "storage/**"
+  - "test/**"
+  - "vendor/**"
 ```
 
 ```

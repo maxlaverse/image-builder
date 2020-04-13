@@ -44,7 +44,7 @@ func (c *BuildConfiguration) BuilderLocation() string {
 
 // BuilderCache returns the builder's image cache
 func (c *BuildConfiguration) BuilderCache() string {
-	return utils.KeyValueOrEmpty(c.data, "builderCache")
+	return utils.KeyValueOrEmpty(c.data, "extraImageCache")
 }
 
 // IsBuilderCacheSet returns wether a buildercache is specified
@@ -57,7 +57,8 @@ func (c *BuildConfiguration) IncludePatterns(stageName string) []string {
 	return c.MergedStringSpecAttribute(stageName, "contextInclude")
 }
 
-// SpecAttribute returns the Dockerfiles to ignore
+// SpecAttribute returns the stage attribute of the configuration or
+// a global one if it exists
 func (c *BuildConfiguration) SpecAttribute(stageName, attrName string) (interface{}, bool) {
 	if v, ok := c.data[fmt.Sprintf("%sSpec", stageName)]; ok {
 		if v, ok := v.(map[interface{}]interface{})[attrName]; ok {
@@ -71,7 +72,8 @@ func (c *BuildConfiguration) SpecAttribute(stageName, attrName string) (interfac
 	return nil, false
 }
 
-// MergedStringSpecAttribute returns the Dockerfiles to ignore
+// MergedStringSpecAttribute returns an array of merge attributes from the stage
+// and the globalSpec
 func (c *BuildConfiguration) MergedStringSpecAttribute(stageName, attrName string) []string {
 	result := []string{}
 	if v, ok := c.data["globalSpec"].(map[interface{}]interface{})[attrName]; ok {
@@ -89,7 +91,7 @@ func (c *BuildConfiguration) MergedStringSpecAttribute(stageName, attrName strin
 	return result
 }
 
-// SpecAttributeNames returns the Dockerfiles to ignore
+// SpecAttributeNames returns the list of attributes that have been specified
 func (c *BuildConfiguration) SpecAttributeNames(stageName string) []string {
 	keyList := []string{}
 	if v, ok := c.data[fmt.Sprintf("%sSpec", stageName)]; ok {

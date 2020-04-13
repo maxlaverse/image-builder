@@ -17,7 +17,7 @@ binary into a lightweight base image.
 The application's main Go file has to live inside the root of the project's repository.
 
 ## Dependency management
-This builder uses `go mod` (Go 1.11+) for managing dependencies.
+This builder uses `go mod` for managing dependencies.
 
 ## Stages
 The builder consists only in two stages:
@@ -27,15 +27,15 @@ The builder consists only in two stages:
 ## Example
 
 ```yaml
-builder:
-  name: go-debian
-  location: ssh://git@github.com:maxlaverse/image-builder
+builderName: go-debian
+builderLocation: ssh://git@github.com:maxlaverse/image-builder
 globalSpec:
   osRelease: buster
   goVersion: "1.13"
   binary: ovh-exchange-backup
   runtimePackages:
   - ca-certificates
+releaseSpec:
   contextInclude:
-  - pkg
+  - "pkg/**/*.go"
 ```

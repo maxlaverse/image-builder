@@ -42,9 +42,8 @@ Only [Docker][docker-website], [Podman][podman-website] and [Buildah][buildah-we
 $ git clone git@github.com/maxlaverse/example-of-application.git
 $ cd example-of-application
 $ cat <<EOF > build.yaml
-builder:
-  name: go-debian
-  location: ssh://git@github.com:maxlaverse/image-builder-collection.git[#branch:[subfolder]]
+builderName: go-debian
+builderLocation: https://github.com/maxlaverse/image-builder#master:builders
 EOF
 
 $ image-build build .
@@ -57,17 +56,21 @@ $ image-build build .
 The Build Configuration is a YAML file, usually specific to an application and commited in its repository. It contains
 the required settings to build a Container Image out of the source code of an application. There are two mandatory
 information:
-* `builder.name`: the name of the Builder which is like the type of the application (e.g: Go, Ruby, Scala)
-* `builder.location`: the location of the Builders (e.g filesystem, git repository)
+* `builderName`: the name of the Builder which is like the type of the application (e.g: Go, Ruby, Scala)
+* `builderLocation`: the location of the Builders (e.g filesystem, git repository)
 
 **Example:**
 ```
-builder:
-  name: go-debian
-  location: ssh://git@github.com/maxlaverse/image-builder.git#master:builders
+builderName: go-debian
 
-  # [optional] Image registry to lookup for commonly used cache images
-  cache: docker.io/maxlaverse
+# Format: <repository>[#branch:[subfolder]]
+# Example 1: ssh://git@github.com:maxlaverse/image-builder-collection.git
+# Example 2: github.com/maxlaverse/image-builder-collection.git#master
+# Example 3: /Users/maxlaverse/go/image-builder/builders
+builderLocation: https://github.com/maxlaverse/image-builder#master:builders
+
+# [optional] Image registry to lookup for commonly used cache images
+extraImageCache: docker.io/maxlaverse
 
 # Additional settings for the Dockerfile generation
 globalSpec:
@@ -142,7 +145,7 @@ play a role in cache invalidation. They have the form of `# Key` or `# Key Value
 
 | Name                    | Description                                                                      |
 |-------------------------|----------------------------------------------------------------------------------|
-| `ContextInclude`        | Adds an item to the build context                                                |
+| `ContextInclude`        | Adds an item to the build context. Items not in that list are ignored through a `.dockerignore` file. |
 | `UseBuilderContext`     | Use the Builder's folder as build context instead of the application's folder. Required if the stage is embedding files from the Builder's folder.|
 | `FriendlyTag`           | Appends a friendly information to the tag (e.g os release, package version)      |
 | `TagAlias`              | Push the resulting image with extra tag (e.g: v2, v2.6, v2.6.5)                  |
@@ -158,7 +161,7 @@ Depending on the Build Configuration and Builder Definition, the following condi
   * if `FROM` uses `BuilderStage()` and the Content Hash of the other stage changed
   * when the Dockerfile template itself changed (update of the Builder definition)
   * when a value used to render the Dockerfile changed (e.g version of a system package to install)
-* the content of the Build Context changed (if not ignored with `.dockerignore`)
+* the content of the Build Context changed
 
 As always with Container Image build, some layers may result in different images depending when then run.
 This is the case when `apt-get update` is executed during the build, or any `wget` or command line interacting with
@@ -200,20 +203,18 @@ is a Git repository, `image-builder` will either clone it or pull it.
 
 It then verifies that the content of the Builder is valid and renders the `Dockerfile` for each available stage.
 When a stage depends on another stage, it computes the content hash of this dependency and tries to
-find an image with the expected tag on the Builder image registry first (if `builderCache` has been specific in the Build
+find an image with the expected tag on the Builder image registry first (if `extraImageCache` has been specific in the Build
 Configuration). If it can't be found, a second try is done on the application's image registry. Ultimately, the image
 for the stage is either pulled or built. When a stage needs to be built, `image-builder` pushes the resulting image to
 the application's image registry.
 
 ## TODOs
 * Remove all the TODOs
-* Mention origin of `import "github.com/docker/docker/pkg/fileutils"`
 * Command to prune cache for an app, to prune baseLayers, manually
 * Allow to use wildcards when specifying stages to build
 * Explain cache invalidation, apt-get and how ImageAgeGeneration might help (and choose a better name for it)
 * Specify default image in build.yaml ?
 * Add tests
-* Flag in `prebuilt.yaml` to delete an image from registry  ?
 
 [dockerfile-copy]: https://docs.docker.com/engine/reference/builder/#copy
 [docker-website]: https://docs.docker.com/
