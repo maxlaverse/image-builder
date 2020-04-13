@@ -3,7 +3,6 @@ package builder
 import (
 	"context"
 	"fmt"
-	"strings"
 	"sync"
 
 	"github.com/BurntSushi/locker"
@@ -90,7 +89,19 @@ func (b *Build) PrepareStages(stageNames []string) ([]BuildStage, error) {
 		if err = stage.(BuildStage).Render(); err != nil {
 			return false
 		}
-		log.Debugf(".dockerignore for stage '%s' is:\n%s", stageName, strings.Join(stage.(BuildStage).Dockerignore(), "\n"))
+		files, err := stage.(BuildStage).ContextFiles()
+		if err != nil {
+			return false
+		}
+
+		if len(files) == 0 {
+			log.Debugf("The context for stage '%s' is empty", stageName)
+		} else {
+			log.Debugf("Files included in the context for stage '%s' are:", stageName)
+			for _, f := range files {
+				log.Debugf("* %s", f)
+			}
+		}
 		log.Debugf("Dockerfile for stage '%s' is:\n%s", stageName, stage.(BuildStage).Dockerfile())
 		return true
 	})

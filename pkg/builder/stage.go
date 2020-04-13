@@ -44,7 +44,7 @@ type BuildStage interface {
 	ComputeContentHash() error
 	ContentHash() string
 	Dockerfile() string
-	Dockerignore() []string
+	ContextFiles() ([]string, error)
 	GetRequiredStages() []string
 	GetTagAliases() []string
 	ImageTag() (string, error)
@@ -101,7 +101,13 @@ func (b *buildStage) Build(engineBuild engine.BuildEngine) error {
 	defer os.Remove(dockerfilePath)
 
 	dockerignorePath := path.Join(b.dockerfile.GetBuildContext(), dockerIgnoreName)
-	err = writeDockerIgnore(dockerignorePath, b.Dockerignore())
+
+	files, err := b.ContextFiles()
+	if err != nil {
+		return err
+	}
+
+	err = writeExplicitDockerIgnore(dockerignorePath, files)
 	if err != nil {
 		return fmt.Errorf("error writing '.dockerignore' file: %w", err)
 	}
@@ -110,9 +116,22 @@ func (b *buildStage) Build(engineBuild engine.BuildEngine) error {
 	return engineBuild.Build(dockerfilePath, b.imageURL, b.dockerfile.GetBuildContext())
 }
 
+func (b *buildStage) ContextFiles() ([]string, error) {
+	contextFiles, err := fileutils.ListMatchingFiles(b.dockerfile.GetBuildContext(), append(b.extraIgnorePatterns, b.dockerfile.GetDockerIgnores()...))
+	if err != nil {
+		return contextFiles, fmt.Errorf("error listing files in context: %w", err)
+	}
+	return contextFiles, nil
+}
+
 func (b *buildStage) ComputeContentHash() error {
 	log.Tracef("Context directory is '%s'", b.dockerfile.GetBuildContext())
-	contentHash, err := fileutils.ContentHashing(b.dockerfile.GetContentWithoutIgnoredLines(), b.dockerfile.GetBuildContext(), b.Dockerignore())
+	files, err := b.ContextFiles()
+	if err != nil {
+		return err
+	}
+
+	contentHash, err := fileutils.ContentHashing(b.dockerfile.GetBuildContext(), files, b.dockerfile.GetContentWithoutIgnoredLines())
 	if err != nil {
 		return fmt.Errorf("error computing ContentHash: %w", err)
 	}
@@ -129,10 +148,6 @@ func (b *buildStage) ContentHash() string {
 
 func (b *buildStage) Dockerfile() string {
 	return b.dockerfile.GetContent()
-}
-
-func (b *buildStage) Dockerignore() []string {
-	return append(b.extraIgnorePatterns, b.dockerfile.GetDockerIgnores()...)
 }
 
 func (b *buildStage) GetRequiredStages() []string {
@@ -184,7 +199,10 @@ func writeDockerfile(content string) (string, error) {
 	return f.Name(), err
 }
 
-func writeDockerIgnore(path string, ignorePatterns []string) error {
-	content := strings.Join(ignorePatterns, "\n") + "\n"
-	return ioutil.WriteFile(path, []byte(content), 0644)
+func writeExplicitDockerIgnore(path string, filesToInclude []string) error {
+	if len(filesToInclude) == 0 {
+		return ioutil.WriteFile(path, []byte("*"), 0644)
+	}
+	content := strings.Join(filesToInclude, "\n!") + "\n"
+	return ioutil.WriteFile(path, []byte("*\n!"+content), 0644)
 }

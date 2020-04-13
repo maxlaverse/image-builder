@@ -5,21 +5,15 @@ import (
 	"hash/crc32"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
 	"sort"
 	"strings"
 
-	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 )
 
-func ContentHashing(extraContent string, srcPath string, ignorePatterns []string) (string, error) {
-	files, err := listMatchingFiles(srcPath, ignorePatterns)
-	if err != nil {
-		log.Errorf("Could not walk: '%v'", err)
-		return "", err
-	}
-
+func ContentHashing(basePath string, files []string, extraContent string) (string, error) {
 	//Initialize an empty return string now in case an error has to be returned
 	var returnCRC32String string
 
@@ -34,9 +28,9 @@ func ContentHashing(extraContent string, srcPath string, ignorePatterns []string
 	//Copy the file in the interface
 
 	for _, filePath := range files {
-		fi, err := os.Stat(srcPath + "/" + filePath)
+		fi, err := os.Stat(path.Join(basePath, filePath))
 		if err != nil {
-			log.Errorf("Could not stat: '%s'", srcPath+"/"+filePath)
+			log.Errorf("Could not stat: '%s'", path.Join(basePath, filePath))
 			continue
 			return "", err
 		}
@@ -46,9 +40,9 @@ func ContentHashing(extraContent string, srcPath string, ignorePatterns []string
 		}
 
 		err = func() error {
-			file, err := os.Open(srcPath + "/" + filePath)
+			file, err := os.Open(path.Join(basePath, filePath))
 			if err != nil {
-				log.Errorf("Could not open: '%s'", srcPath+"/"+filePath)
+				log.Errorf("Could not open: '%s'", path.Join(basePath, filePath))
 				return err
 			}
 
@@ -79,7 +73,7 @@ func ContentHashing(extraContent string, srcPath string, ignorePatterns []string
 	return returnCRC32String, nil
 }
 
-func listMatchingFiles(srcPath string, ignorePatterns []string) ([]string, error) {
+func ListMatchingFiles(srcPath string, ignorePatterns []string) ([]string, error) {
 	files := []string{}
 
 	log.Tracef("Ignore patterns are: %v", ignorePatterns)
@@ -103,7 +97,7 @@ func listMatchingFiles(srcPath string, ignorePatterns []string) ([]string, error
 			}
 		}
 		if skip {
-			logrus.Tracef("Skipping excluded path: %s", f.Name())
+			log.Tracef("Skipping excluded path: %s", f.Name())
 
 			if !f.IsDir() {
 				return nil
@@ -125,7 +119,7 @@ func listMatchingFiles(srcPath string, ignorePatterns []string) ([]string, error
 			}
 
 			// No matching exclusion dir so just skip dir
-			logrus.Tracef("Skipping whole directory: %s", f.Name())
+			log.Tracef("Skipping whole directory: %s", f.Name())
 			return filepath.SkipDir
 		}
 		log.Tracef("Including path in context: %s", relFilePath)
