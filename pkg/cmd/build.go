@@ -80,6 +80,9 @@ func buildStageApp(opts buildCommandOptions, buildContext string) error {
 		log.Infof("No target image name has been provided. Using '%s'", opts.targetImage)
 	}
 
+	if !strings.HasPrefix(buildContext, "/") {
+		buildContext = buildContext + "/"
+	}
 	buildContext, err = filepath.Abs(path.Dir(buildContext))
 	if err != nil {
 		return err
