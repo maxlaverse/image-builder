@@ -10,3 +10,11 @@ func MapKeys(aMap map[string]interface{}) []string {
 	sort.Strings(keys)
 	return keys
 }
+
+func KeyValueOrEmpty(m map[string]interface{}, key string) string {
+	v, ok := m[key]
+	if !ok {
+		return ""
+	}
+	return v.(string)
+}

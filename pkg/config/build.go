@@ -34,26 +34,17 @@ func ReadBuildConfiguration(filepath string) (BuildConfiguration, error) {
 
 // BuilderName returns the builder's name
 func (c *BuildConfiguration) BuilderName() string {
-	if c.data == nil || c.data["builder"].(map[interface{}]interface{})["name"] == nil {
-		return ""
-	}
-	return c.data["builder"].(map[interface{}]interface{})["name"].(string)
+	return utils.KeyValueOrEmpty(c.data, "builderName")
 }
 
 // BuilderLocation returns the builder's location
 func (c *BuildConfiguration) BuilderLocation() string {
-	if c.data == nil || c.data["builder"].(map[interface{}]interface{})["location"] == nil {
-		return ""
-	}
-	return strings.TrimSuffix(c.data["builder"].(map[interface{}]interface{})["location"].(string), "/")
+	return strings.TrimSuffix(utils.KeyValueOrEmpty(c.data, "builderLocation"), "/")
 }
 
 // BuilderCache returns the builder's image cache
 func (c *BuildConfiguration) BuilderCache() string {
-	if c.data == nil || c.data["builder"].(map[interface{}]interface{})["cache"] == nil {
-		return ""
-	}
-	return c.data["builder"].(map[interface{}]interface{})["cache"].(string)
+	return utils.KeyValueOrEmpty(c.data, "builderCache")
 }
 
 // IsBuilderCacheSet returns wether a buildercache is specified
