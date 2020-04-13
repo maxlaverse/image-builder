@@ -88,7 +88,7 @@ func buildStageApp(opts buildCommandOptions, buildContext string) error {
 }
 
 func buildStageGeneric(opts buildCommandOptions, stages []string, buildConf config.BuildConfiguration, buildContext string) error {
-	builderDef, err := builder.NewDefinitionFromLocation(buildConf.Builder.Name, buildConf.Builder.Location)
+	builderDef, err := builder.NewDefinitionFromLocation(buildConf.BuilderName(), buildConf.BuilderLocation())
 	if err != nil {
 		return err
 	}

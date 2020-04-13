@@ -123,9 +123,9 @@ func (d *data) GitCommitShort() string {
 
 // MandatoryParameter returns a parameter from GlobalSpec or fails
 func (d *data) MandatoryParameter(parameterName string) interface{} {
-	value, ok := d.buildConf.GetSpecAttribute(d.stageName, parameterName)
+	value, ok := d.buildConf.SpecAttribute(d.stageName, parameterName)
 	if !ok {
-		log.Fatalf("Could not find mandatory parameter in: %v", d.buildConf.GlobalSpec)
+		log.Fatalf("Could not find mandatory parameter in: %v", d.buildConf.SpecAttributeNames(d.stageName))
 	}
 	return value
 }
@@ -135,7 +135,7 @@ func (d *data) ParameterWithOptionalDefault(args ...string) interface{} {
 	if len(args[0]) == 0 {
 		return ""
 	}
-	value, ok := d.buildConf.GetSpecAttribute(d.stageName, args[0])
+	value, ok := d.buildConf.SpecAttribute(d.stageName, args[0])
 	if ok {
 		return value
 	} else if len(args) > 1 {

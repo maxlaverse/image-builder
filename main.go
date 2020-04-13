@@ -28,7 +28,6 @@ func main() {
 	command.PersistentFlags().IntVarP(&verbose, "verbose", "v", 0, "Be verbose on log output")
 
 	command.AddCommand(cmd.NewBuildCmd(conf))
-	command.AddCommand(cmd.NewPreBuildCmd(conf))
 	command.AddCommand(cmd.NewConfigCmd(conf))
 
 	if err := command.Execute(); err != nil {

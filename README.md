@@ -175,8 +175,10 @@ This allows to build some specific stages and have them shared with everyone, in
 own version of the same stage.
 
 Those images are sometimes refered as *prebuild* images. Good candidates are stage that don't include any source code
-but only install system packages (e.g an Ubuntu image with Go). The command `image-builder prebuild` helps generating
-the prebuilt images.
+but only install system packages (e.g an Ubuntu image with Go).
+
+This can easily be achieved with the existing `build` command:
+`image-builder build -c prebuilt-go-debian-1.14-buster.yaml -s base -t docker.io/maxlaverse/go-debian`
 
 ### Prepare stages
 Depending on the Builder and the type of test, it makes sense to prebuild some of the stages as a first step of a

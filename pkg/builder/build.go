@@ -181,7 +181,7 @@ func (b *Build) prepareStage(stageName string) (BuildStage, error) {
 	stage.SetImageURL(b.targetImage + ":" + stageName + "-" + tag)
 	stage.SetSourceImageURL(b.targetImage + ":" + stageName + "-" + tag)
 	if b.opts.CacheImagePull && b.buildConf.IsBuilderCacheSet() {
-		cachedDockerImageWithTag := b.buildConf.Builder.ImageCache + "/" + b.buildConf.Builder.Name + ":" + stageName + "-" + tag
+		cachedDockerImageWithTag := b.buildConf.BuilderCache() + "/" + b.buildConf.BuilderName() + ":" + stageName + "-" + tag
 		exists, err := registry.ImageExists(cachedDockerImageWithTag)
 		if err != nil {
 			return stage, fmt.Errorf("error while verifying if image '%s' exists: %w", cachedDockerImageWithTag, err)
