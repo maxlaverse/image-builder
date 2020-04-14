@@ -10,7 +10,7 @@ binary into a lightweight base image.
 | goVersion       | yes       | Version of Go.                                                           |
 | goBinary        | yes       | Name of main binary.                                                     |
 | runtimePackages | no        | Additional system packages needed during runtime (e.g. ca-certificates). |
-| goBuildCmd      | no        | Alternative command to build the binary (default: `go build`). |
+| goBuildCmd      | no        | Alternative command to build the binary (default: `go build -mod=readonly`). |
 | goGetModules    | no        | Additional modules to download in the module stage. |
 
 ## Project structure
