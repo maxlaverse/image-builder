@@ -200,9 +200,9 @@ func writeDockerfile(content string) (string, error) {
 }
 
 func writeExplicitDockerIgnore(path string, filesToInclude []string) error {
-	if len(filesToInclude) == 0 {
-		return ioutil.WriteFile(path, []byte("*"), 0644)
+	content := "*\n"
+	if len(filesToInclude) > 0 {
+		content = content + "!" + strings.Join(filesToInclude, "\n!") + "\n"
 	}
-	content := strings.Join(filesToInclude, "\n!") + "\n"
-	return ioutil.WriteFile(path, []byte("*\n!"+content), 0644)
+	return ioutil.WriteFile(path, []byte(content), 0644)
 }
