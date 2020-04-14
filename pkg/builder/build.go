@@ -213,13 +213,13 @@ func (b *Build) prepareStage(stageName string) (BuildStage, error) {
 
 // buildStage builds a specific stage
 func (b *Build) buildStage(stage BuildStage) error {
-	log.Debugf("Trying to acquire lock on '%s'", stage.Name())
+	log.Tracef("Trying to acquire lock on '%s'", stage.Name())
 	b.locker.Lock(stage.Name())
 	defer func() {
 		b.locker.Unlock(stage.Name())
-		log.Debugf("Releasing lock on '%s'", stage.Name())
+		log.Tracef("Releasing lock on '%s'", stage.Name())
 	}()
-	log.Debugf("Got lock on '%s'", stage.Name())
+	log.Tracef("Got lock on '%s'", stage.Name())
 
 	// Log and exit of the nothing need to be done
 	if stage.Status() == ImageCached {
@@ -265,7 +265,8 @@ func (b *Build) buildStage(stage BuildStage) error {
 	}
 
 	// Build image
-	if err := wrapWithSemaphore(b.semBuild, "build", stage.Name(), func() error { return stage.Build(b.engine) }); err != nil {
+	buildFunc := func() error { return stage.Build(b.engine) }
+	if err := wrapWithSemaphore(b.semBuild, "build", stage.Name(), buildFunc); err != nil {
 		return fmt.Errorf("error while building stage '%s': %w", stage.Name(), err)
 	}
 
@@ -332,14 +333,14 @@ func (b *Build) getBuildStages() []BuildStage {
 
 // wrapWithSemaphore wraps a call with a semaphore
 func wrapWithSemaphore(sem *semaphore.Weighted, name, instance string, f func() error) error {
-	log.Debugf("Trying to acquire semaphore for '%s' on '%s'", instance, name)
+	log.Tracef("Trying to acquire semaphore for '%s' on '%s'", instance, name)
 	if err := sem.Acquire(context.Background(), 1); err != nil {
 		return err
 	}
-	log.Debugf("Acquired semaphore for '%s' on '%s'", instance, name)
+	log.Tracef("Acquired semaphore for '%s' on '%s'", instance, name)
 	defer func() {
 		sem.Release(1)
-		log.Debugf("Releasing semaphore for '%s' on '%s'", instance, name)
+		log.Tracef("Releasing semaphore for '%s' on '%s'", instance, name)
 	}()
 	return f()
 }
