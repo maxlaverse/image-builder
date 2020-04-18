@@ -12,6 +12,7 @@ import (
 	"github.com/maxlaverse/image-builder/pkg/engine"
 	"github.com/maxlaverse/image-builder/pkg/executor"
 	"github.com/maxlaverse/image-builder/pkg/registry"
+	"github.com/maxlaverse/image-builder/pkg/utils"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -118,6 +119,16 @@ func buildStageGeneric(opts buildCommandOptions, stages []string, buildConf conf
 	buildSummaries, err := b.BuildStages(stages)
 	if err != nil {
 		return err
+	}
+
+	knownStages := []string{}
+	for _, buildSummary := range buildSummaries {
+		knownStages = append(knownStages, buildSummary.Name())
+	}
+	for k := range opts.extraTags {
+		if !utils.ItemExists(knownStages, k) {
+			log.Warnf("No extra tags can't be added on unknown stage '%s'. Available stages: %s", k, strings.Join(knownStages, ", "))
+		}
 	}
 
 	imageURLs := []string{}
