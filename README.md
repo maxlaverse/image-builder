@@ -34,7 +34,7 @@ Only [Docker][docker-website], [Podman][podman-website] and [Buildah][buildah-we
 ## Prerequisites
 * The `image-builder` binary
 * An application with a [Build Configuration](#build-configuration)
-* A [Builder Definition](#builder-definition) for the type of application to be built (e.g [Go][builder-goapp], [Rails][builder-railsapp])
+* A [Builder Definition](#builder-definition) for the type of application to be built (e.g [Go][builder-go-debian], [Rails][builder-rails-debian], [Python][builder-python-debian])
 * A Container Engine (Docker and Podman are supported)
 
 ## Usage
@@ -220,5 +220,6 @@ the application's image registry.
 [docker-website]: https://docs.docker.com/
 [podman-website]: https://podman.io/
 [buildah-website]: https://github.com/containers/buildah
-[builder-goapp]: builders/go-debian/README.md
-[builder-railsapp]: builders/rails-debian/README.md
+[builder-go-debian]: builders/go-debian/README.md
+[builder-rails-debian]: builders/rails-debian/README.md
+[builder-python-debian]: builders/python-debian/README.md

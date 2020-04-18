@@ -1,4 +1,4 @@
-# railsapp
+# rails-debian
 Creates minimal images by compiling the application in a stage and copying only the resulting 
 Rails app and its gem into a lightweight base image.
 

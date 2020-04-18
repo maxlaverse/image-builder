@@ -1,4 +1,4 @@
-# goapp
+# go-debian
 Creates minimal images by compiling the application in a stage and copying only the resulting 
 binary into a lightweight base image.
 
