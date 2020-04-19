@@ -2,6 +2,7 @@ package engine
 
 import (
 	"bytes"
+	"fmt"
 	"strings"
 
 	"github.com/maxlaverse/image-builder/pkg/executor"
@@ -58,7 +59,7 @@ func (cli *buildahCli) Version() (string, error) {
 
 	err := cli.exec.NewCommand("buildah", "version").WithCombinedOutput(&out).Run()
 	if err != nil {
-		log.Errorf("Command returned '%v': %s", err, out.String())
+		return "", fmt.Errorf("command returned '%v': %s", err, out.String())
 	}
 	return strings.TrimSpace(strings.Split(strings.Split(out.String(), "\n")[0], ":")[1]), nil
 }

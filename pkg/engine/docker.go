@@ -2,6 +2,7 @@ package engine
 
 import (
 	"bytes"
+	"fmt"
 	"strings"
 
 	"github.com/maxlaverse/image-builder/pkg/executor"
@@ -57,7 +58,7 @@ func (cli *dockerCli) Version() (string, error) {
 	var out bytes.Buffer
 	err := cli.exec.NewCommand("docker", "version", "--format", "{{json .Server.Version}}").WithCombinedOutput(&out).Run()
 	if err != nil {
-		log.Errorf("Command returned '%v': %s", err, out.String())
+		return "", fmt.Errorf("command returned '%v': %s", err, out.String())
 	}
 	return strings.ReplaceAll(strings.TrimSpace(out.String()), "\"", ""), nil
 }

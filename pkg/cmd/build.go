@@ -102,7 +102,7 @@ func buildStageGeneric(opts buildCommandOptions, stages []string, buildConf conf
 
 	engineVersion, err := engineCli.Version()
 	if err != nil {
-		return err
+		return fmt.Errorf("unable to determine Container Engine version: %v", err)
 	}
 	log.Infof("Container Engine: %s (v%s)\n", engineCli.Name(), engineVersion)
 
