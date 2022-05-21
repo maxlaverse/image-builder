@@ -66,8 +66,10 @@ func (c *BuildConfiguration) SpecAttribute(stageName, attrName string) (interfac
 		}
 	}
 
-	if v, ok := c.data["globalSpec"].(map[interface{}]interface{})[attrName]; ok {
-		return v, true
+	if v, ok := c.data["globalSpec"]; ok {
+		if v2, ok := v.(map[interface{}]interface{})[attrName]; ok {
+			return v2, true
+		}
 	}
 	return nil, false
 }
@@ -76,9 +78,11 @@ func (c *BuildConfiguration) SpecAttribute(stageName, attrName string) (interfac
 // and the globalSpec
 func (c *BuildConfiguration) MergedStringSpecAttribute(stageName, attrName string) []string {
 	result := []string{}
-	if v, ok := c.data["globalSpec"].(map[interface{}]interface{})[attrName]; ok {
-		for _, v3 := range v.([]interface{}) {
-			result = append(result, v3.(string))
+	if v, ok := c.data["globalSpec"]; ok {
+		if v2, ok := v.(map[interface{}]interface{})[attrName]; ok {
+			for _, v3 := range v2.([]interface{}) {
+				result = append(result, v3.(string))
+			}
 		}
 	}
 	if v, ok := c.data[fmt.Sprintf("%sSpec", stageName)]; ok {
