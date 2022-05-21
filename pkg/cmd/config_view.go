@@ -5,7 +5,7 @@ import (
 
 	"github.com/maxlaverse/image-builder/pkg/config"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 // NewConfigViewCmd returns a Cobra Command to configuration the tool

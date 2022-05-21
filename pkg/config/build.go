@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/maxlaverse/image-builder/pkg/utils"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 // BuildConfiguration represents the build configuration of an application
