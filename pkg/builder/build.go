@@ -284,6 +284,7 @@ func (b *Build) buildStage(stage BuildStage) error {
 // ensureDependencyPresence pull the dependencies for a Stage and retags them to match the expected name
 // or build them
 func (b *Build) ensureDependencyPresence(stage BuildStage) error {
+	fmt.Println(stage)
 	if stage.Status() == ImageAbsent {
 		err := b.buildStage(stage)
 		if err != nil {
@@ -291,15 +292,16 @@ func (b *Build) ensureDependencyPresence(stage BuildStage) error {
 		}
 		return nil
 	} else if stage.Status() == ImageCached {
-		// err := wrapWithSemaphore(b.semPull, "pull", stage.Name(), func() error { return b.engine.Pull(stage.SourceImageURL()) })
-		// if err != nil {
-		// 	return fmt.Errorf("error while pulling image '%s' required for stage '%s': %w", stage.SourceImageURL(), stage.Name(), err)
-		// }
+		return nil
+		err := wrapWithSemaphore(b.semPull, "pull", stage.Name(), func() error { return b.engine.Pull(stage.SourceImageURL()) })
+		if err != nil {
+			return fmt.Errorf("error while pulling image '%s' required for stage '%s': %w", stage.SourceImageURL(), stage.Name(), err)
+		}
 
-		// err = b.engine.Tag(stage.SourceImageURL(), stage.ImageURL())
-		// if err != nil {
-		// 	return fmt.Errorf("error while tagging image '%s' required for stage '%s' as '%s': %w", stage.SourceImageURL(), stage.Name(), stage.ImageURL(), err)
-		// }
+		err = b.engine.Tag(stage.SourceImageURL(), stage.ImageURL())
+		if err != nil {
+			return fmt.Errorf("error while tagging image '%s' required for stage '%s' as '%s': %w", stage.SourceImageURL(), stage.Name(), stage.ImageURL(), err)
+		}
 		stage.SetStatus(ImagePulled)
 	}
 	return nil

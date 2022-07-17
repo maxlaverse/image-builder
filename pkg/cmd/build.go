@@ -134,7 +134,12 @@ func buildStageGeneric(opts buildCommandOptions, stages []string, buildConf conf
 	imageURLs := []string{}
 	for _, buildSummary := range buildSummaries {
 		for _, j := range opts.extraTags[buildSummary.Name()] {
-			if buildSummary.Status() == builder.ImageBuilt || buildSummary.Status() == builder.ImagePulled {
+			if opts.cacheImagePush && (buildSummary.Status() == builder.ImageBuilt || buildSummary.Status() == builder.ImagePulled) {
+				err = registry.TagImage(buildSummary.ImageURL(), j)
+				if err != nil {
+					return err
+				}
+			} else if buildSummary.Status() == builder.ImageBuilt || buildSummary.Status() == builder.ImagePulled {
 				err = engineCli.Tag(buildSummary.ImageURL(), opts.targetImage+":"+j)
 				if err != nil {
 					return err
