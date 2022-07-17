@@ -47,7 +47,7 @@ func TestBuildStage(t *testing.T) {
 	stage := NewBuildStage("empty", dockerfile, []string{})
 	stage.SetImageURL("final-image")
 	fakeEngine := enginetest.New()
-	err := stage.Build(fakeEngine)
+	err := stage.Build(fakeEngine, false)
 
 	assert.NoError(t, err)
 	assert.Equal(t, []string{"Build(final-image)"}, fakeEngine.MethodCalls)

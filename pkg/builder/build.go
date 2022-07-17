@@ -265,7 +265,7 @@ func (b *Build) buildStage(stage BuildStage) error {
 	}
 
 	// Build image
-	buildFunc := func() error { return stage.Build(b.engine) }
+	buildFunc := func() error { return stage.Build(b.engine, b.opts.CacheImagePush) }
 	if err := wrapWithSemaphore(b.semBuild, "build", stage.Name(), buildFunc); err != nil {
 		return fmt.Errorf("error while building stage '%s': %w", stage.Name(), err)
 	}
@@ -273,7 +273,7 @@ func (b *Build) buildStage(stage BuildStage) error {
 	// Eventually push the image
 	stage.SetStatus(ImageBuilt)
 	log.Infof("Stage '%s' successfully built!", stage.Name())
-	if b.opts.CacheImagePush {
+	if _, ok := b.engine.(engine.BuildAndPushEngine); !ok && b.opts.CacheImagePush {
 		if err := b.pushStage(stage); err != nil {
 			return fmt.Errorf("error while pusing image for stage '%s': %w", stage.Name(), err)
 		}

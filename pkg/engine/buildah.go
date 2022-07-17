@@ -13,8 +13,8 @@ type buildahCli struct {
 	exec executor.Executor
 }
 
-// newbuildahCli returns a new engine based on buildah
-func newbuildahCli(exec executor.Executor) BuildEngine {
+// newBuildahCli returns a new engine based on buildah
+func newBuildahCli(exec executor.Executor) BuildEngine {
 	return &buildahCli{exec: exec}
 }
 

@@ -40,7 +40,7 @@ const (
 
 // BuildStage represents a individual stage which can be built
 type BuildStage interface {
-	Build(engineBuild engine.BuildEngine) error
+	Build(engineBuild engine.BuildEngine, pushCache bool) error
 	ComputeContentHash() error
 	ContentHash() string
 	Dockerfile() string
@@ -92,7 +92,7 @@ func (b *buildStage) SetStatus(status StageImageStatus) {
 }
 
 // Build writes a Dockerfile and .dockerignore and calls the engine's build command
-func (b *buildStage) Build(engineBuild engine.BuildEngine) error {
+func (b *buildStage) Build(engineBuild engine.BuildEngine, pushCache bool) error {
 	log.Infof("Build context for '%s' is '%s'", b.Name(), b.dockerfile.GetBuildContext())
 	dockerfilePath, err := writeDockerfile(b.dockerfile.GetContent())
 	if err != nil {
@@ -113,7 +113,11 @@ func (b *buildStage) Build(engineBuild engine.BuildEngine) error {
 	}
 	defer os.Remove(dockerignorePath)
 
-	return engineBuild.Build(dockerfilePath, b.imageURL, b.dockerfile.GetBuildContext())
+	if v, ok := engineBuild.(engine.BuildAndPushEngine); ok {
+		return v.BuildAndPush(dockerfilePath, b.imageURL, b.dockerfile.GetBuildContext(), pushCache)
+	} else {
+		return engineBuild.Build(dockerfilePath, b.imageURL, b.dockerfile.GetBuildContext())
+	}
 }
 
 func (b *buildStage) ContextFiles() ([]string, error) {

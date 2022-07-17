@@ -16,6 +16,11 @@ type BuildEngine interface {
 	Tag(src, dst string) error
 }
 
+// BuildAndPushEngine abstract container builder
+type BuildAndPushEngine interface {
+	BuildAndPush(dockerfile, image, context string, push bool) error
+}
+
 // New returns a new container builder engine
 func New(name string, exec executor.Executor) (BuildEngine, error) {
 	if name == "podman" {
@@ -23,8 +28,10 @@ func New(name string, exec executor.Executor) (BuildEngine, error) {
 	} else if name == "docker" {
 		return newDockerCli(exec), nil
 	} else if name == "buildah" {
-		return newbuildahCli(exec), nil
+		return newBuildahCli(exec), nil
+	} else if name == "buildkit" {
+		return newBuildkitCli(exec), nil
 	} else {
-		return nil, fmt.Errorf("Unsupport engine: %s", name)
+		return nil, fmt.Errorf("unsupport engine: %s", name)
 	}
 }
