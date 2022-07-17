@@ -291,15 +291,15 @@ func (b *Build) ensureDependencyPresence(stage BuildStage) error {
 		}
 		return nil
 	} else if stage.Status() == ImageCached {
-		err := wrapWithSemaphore(b.semPull, "pull", stage.Name(), func() error { return b.engine.Pull(stage.SourceImageURL()) })
-		if err != nil {
-			return fmt.Errorf("error while pulling image '%s' required for stage '%s': %w", stage.SourceImageURL(), stage.Name(), err)
-		}
+		// err := wrapWithSemaphore(b.semPull, "pull", stage.Name(), func() error { return b.engine.Pull(stage.SourceImageURL()) })
+		// if err != nil {
+		// 	return fmt.Errorf("error while pulling image '%s' required for stage '%s': %w", stage.SourceImageURL(), stage.Name(), err)
+		// }
 
-		err = b.engine.Tag(stage.SourceImageURL(), stage.ImageURL())
-		if err != nil {
-			return fmt.Errorf("error while tagging image '%s' required for stage '%s': %w", stage.SourceImageURL(), stage.Name(), err)
-		}
+		// err = b.engine.Tag(stage.SourceImageURL(), stage.ImageURL())
+		// if err != nil {
+		// 	return fmt.Errorf("error while tagging image '%s' required for stage '%s' as '%s': %w", stage.SourceImageURL(), stage.Name(), stage.ImageURL(), err)
+		// }
 		stage.SetStatus(ImagePulled)
 	}
 	return nil

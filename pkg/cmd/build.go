@@ -57,7 +57,7 @@ func NewBuildCmd(conf *config.CliConfiguration) *cobra.Command {
 	cmd.Flags().StringVarP(&opts.buildConfiguration, "build-config", "c", "build.yaml", "Configuration file of the application")
 	cmd.Flags().BoolVarP(&opts.cacheImagePull, "cache-image-pull", "", conf.DefaultCacheImagePull, "Pull cache images from the registry")
 	cmd.Flags().BoolVarP(&opts.cacheImagePush, "cache-image-push", "", conf.DefaultCacheImagePush, "Push cache images to the registry")
-	cmd.Flags().Int64VarP(&opts.pullConcurrency, "pull-concurrency", "", conf.DefaultPullConcurrency, "Maximumm number of concurrent image pulls")
+	cmd.Flags().Int64VarP(&opts.pullConcurrency, "pull-concurrency", "", conf.DefaultPullConcurrency, "Maximum number of concurrent image pulls")
 	cmd.Flags().BoolVarP(&opts.dryRun, "dry-run", "", false, "Only display the generated Dockerfiles")
 	cmd.Flags().StringVarP(&opts.engine, "engine", "", conf.DefaultEngine, "Engine to use for building images")
 	cmd.Flags().StringVarP(&opts.targetImage, "target-image", "t", "", "Specifies the name which will be assigned to the resulting image if the build process completes successfully")
@@ -109,7 +109,7 @@ func buildStageGeneric(opts buildCommandOptions, stages []string, buildConf conf
 	buildOpts := builder.BuildOptions{
 		// TODO: Fix this. Having two concurrent builds can lead to problems if
 		// they have a different dockerignore file
-		BuildConcurrency: 1,
+		BuildConcurrency: 4,
 		PullConcurrency:  opts.pullConcurrency,
 		CacheImagePull:   opts.cacheImagePull,
 		CacheImagePush:   opts.cacheImagePush,

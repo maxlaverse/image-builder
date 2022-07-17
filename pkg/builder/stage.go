@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/maxlaverse/image-builder/pkg/engine"
@@ -101,6 +102,10 @@ func (b *buildStage) Build(engineBuild engine.BuildEngine, pushCache bool) error
 	defer os.Remove(dockerfilePath)
 
 	dockerignorePath := path.Join(b.dockerfile.GetBuildContext(), dockerIgnoreName)
+	if engineBuild.Name() == "buildkit" {
+		dockerignorePath = path.Join(b.dockerfile.GetBuildContext(), fmt.Sprintf("%s%s", filepath.Base(dockerfilePath), dockerIgnoreName))
+	}
+	log.Tracef("'.dockerignored file is at '%s'", dockerignorePath)
 
 	files, err := b.ContextFiles()
 	if err != nil {
