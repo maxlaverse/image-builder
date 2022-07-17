@@ -61,13 +61,13 @@ func (c *BuildConfiguration) IncludePatterns(stageName string) []string {
 // a global one if it exists
 func (c *BuildConfiguration) SpecAttribute(stageName, attrName string) (interface{}, bool) {
 	if v, ok := c.data[fmt.Sprintf("%sSpec", stageName)]; ok {
-		if v, ok := v.(map[interface{}]interface{})[attrName]; ok {
+		if v, ok := v.(map[string]interface{})[attrName]; ok {
 			return v, true
 		}
 	}
 
 	if v, ok := c.data["globalSpec"]; ok {
-		if v2, ok := v.(map[interface{}]interface{})[attrName]; ok {
+		if v2, ok := v.(map[string]interface{})[attrName]; ok {
 			return v2, true
 		}
 	}
@@ -79,14 +79,14 @@ func (c *BuildConfiguration) SpecAttribute(stageName, attrName string) (interfac
 func (c *BuildConfiguration) MergedStringSpecAttribute(stageName, attrName string) []string {
 	result := []string{}
 	if v, ok := c.data["globalSpec"]; ok {
-		if v2, ok := v.(map[interface{}]interface{})[attrName]; ok {
+		if v2, ok := v.(map[string]interface{})[attrName]; ok {
 			for _, v3 := range v2.([]interface{}) {
 				result = append(result, v3.(string))
 			}
 		}
 	}
 	if v, ok := c.data[fmt.Sprintf("%sSpec", stageName)]; ok {
-		if v2, ok := v.(map[interface{}]interface{})[attrName]; ok {
+		if v2, ok := v.(map[string]interface{})[attrName]; ok {
 			for _, v3 := range v2.([]interface{}) {
 				result = append(result, v3.(string))
 			}
